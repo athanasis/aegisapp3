@@ -1,0 +1,3630 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Fire WebGIS</title>
+
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="http://getbootstrap.com/examples/starter-template/starter-template.css" rel="stylesheet">
+<link rel="stylesheet" href="https://js.arcgis.com/3.15/esri/css/esri.css">
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+  
+<link rel="stylesheet" href="//esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
+
+<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/dojo/1.10.4/dijit/themes/claro/claro.css">
+  <style>
+    html, body, #mapDiv {
+      height: 100%;
+      width: 100%;
+
+
+    }
+
+
+
+
+.bigdiv {
+   /*width:100%;
+   height:100%;
+   position:absolute;
+   */
+   background-image: url(images/wind_circle.png);
+   background-repeat:no-repeat;
+
+}
+.bigdiv img {
+   /*position:absolute;
+   left:50%;
+   top:50%;
+   */
+   margin-left:65px;
+   margin-top:25px;
+    margin-bottom:5px;
+}
+
+
+
+ /* Change color of icons to match bar chart and selection symbol */
+      .esriPopup.dark div.titleButton, 
+      .esriPopup.dark div.titlePane .title,
+      .esriPopup.dark div.actionsPane .action {
+        color: #000000;
+      }
+      /* Additional customizations */
+      .esriPopup.dark .esriPopupWrapper {
+        border: none;
+      }
+      .esriPopup .contentPane {
+        text-align: center;
+      }
+      .esriViewPopup .gallery {
+        margin: 0 auto;
+      }
+
+
+      #bottomPanel {
+        left: 50%;
+        margin: 0 auto;
+        margin-left: -500px;
+        position: absolute; 
+        bottom: 2.5em;
+      }
+
+      #timeInfo{
+        border-radius: 4px;
+        border: solid 2px #ccc;
+        background-color: #fff;
+        display: block;
+        padding: 5px;
+        position: relative;
+        text-align: center;
+        width: 1000px;
+        z-index: 99;
+      }
+
+  </style>
+ 
+
+
+<!-- ArcGIS API for JavaScript library references -->
+  <script src="//js.arcgis.com/3.15compact"></script>
+  <script>
+    require(["esri/map", "dojo/keys",  "esri/sniff",  "esri/tasks/GeometryService",
+      "esri/dijit/Popup", "esri/dijit/PopupTemplate",
+      "esri/dijit/Legend", "dojo/_base/array",
+
+     "esri/virtualearth/VETiledLayer",
+     "esri/layers/OpenStreetMapLayer",
+     "esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/TimeExtent", "esri/dijit/TimeSlider",
+     "esri/layers/ImageParameters",
+     "esri/layers/FeatureLayer", 
+      "esri/symbols/SimpleFillSymbol","esri/Color",
+      "esri/SpatialReference", 
+      "esri/geometry/Point", 
+       "esri/geometry/Extent",
+       "esri/tasks/FeatureSet",
+       "esri/symbols/PictureMarkerSymbol",
+      "esri/symbols/SimpleMarkerSymbol", "esri/symbols/SimpleLineSymbol", "esri/Color", "esri/graphic",
+      "esri/graphicsUtils",
+      "esri/domUtils",
+      "dojo/parser",
+
+      "dojo/dom-class", "dojo/dom-construct", 
+      "dojo/on", 
+
+      "dojo/dom", 
+
+// parser because of TextBox decoration
+    "dijit/form/HorizontalSlider",
+    "dijit/form/TextBox",
+    "dijit/form/CheckBox",
+    "esri/geometry/webMercatorUtils",
+    "esri/tasks/Geoprocessor",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+      "dojo/dom-class", "dojo/_base/json", "esri/config", "esri/request",
+      "dojo/domReady!"], 
+      function(Map, keys, has,  GeometryService, Popup, PopupTemplate,Legend, arrayUtils, VETiledLayer, OpenStreetMapLayer, ArcGISDynamicMapServiceLayer, 
+        TimeExtent, TimeSlider,
+        ImageParameters, FeatureLayer, SimpleFillSymbol, Color,SpatialReference, Point, Extent, FeatureSet,SimpleMarkerSymbol, PictureMarkerSymbol, SimpleLineSymbol, Color, Graphic, graphicsUtils, domUtils, parser, domClass, domConstruct, on, dom, HorizontalSlider, TextBox, CheckBox, webMercatorUtils, Geoprocessor,  ArcGISTiledMapServiceLayer, domClass, dojoJson, esriConfig, esriRequest) {
+
+        var showLocationgraphic;
+        var showTruckLocationgraphic;
+        var setignPointOnMap = 0;
+        var setignPointOnMapClosest = 0;
+
+        var gpServiceUrl= "http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MTT_GDB_IGN_LSV/GPServer/MTT_GDB_IGNITION_SHP";
+
+        var gpServiceUrl_arrival= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/MTT_GDB_TOA_LSV/GPServer/MTT_GDB_ARRIVAL_SHP";
+
+        var gpServiceUrl_MAJOR= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/MTT_FIRES/MAJORPATHS_LSV/GPServer/toshpMAJOR242014";
+        var gpServiceUrl_FLOW= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/MTT_FIRES/FLOWPATH_LSV/GPServer/toshp2_5_2015";
+        var gpServiceUrl_ROS= "http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MTT_ROS_VECT_LSV/GPServer/MTT_GDB_ROS_SHP";
+        var gpServiceUrl_FLI= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/MTT_GDB_FIRELINE_LSV/GPServer/MTT_GDB_FIRELINE_SHP";
+
+
+          var gpServiceUrl_CloDex="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestDexamenes_LSV/GPServer/Find_Nearby_DEXAMENES";
+
+
+          var gpServiceUrl_CloHydrants="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestKROUNOI_LSV/GPServer/Find_Nearby_KROUNOI";
+
+          var gpServiceUrl_CloPumbs="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestWATER_LSV/GPServer/Find_Nearby_WATER";
+            
+
+          var closestFacilitySelected = 0;
+
+         parser.parse();
+
+
+        dojo.require("esri.virtualearth.VETiledLayer");
+        dojo.require("dijit.form.Button");
+
+      var veTileLayer;
+      var openStreetMapLayer;
+      var CoverTypeslayer;
+      var MajorPathslayer;
+      var FlowPathslayer;
+      var ROSlayer;
+      var FLIlayer;
+      var ArrivalTimelayer;
+      var MTTRasterLayer;
+      var pumpingStationsLayer;
+      var waterTanksLayer;
+      var fireHydrantsLayer;
+      var legend;
+      var mm;
+      var hh;
+      var id_val;
+      var all_descriptions;
+      var featuresClosest;
+        var AreaDistanceShowHide = "hide";
+        //var measurement;
+
+ var fill = new SimpleFillSymbol("solid", null, new Color("#0000ff"));
+var popup = new Popup({
+            fillSymbol: fill,
+            titleInBody: false
+        }, domConstruct.create("div"));
+        //Add the dark theme which is customized further in the <style> tag at the top of this page
+        domClass.add(popup.domNode, "dark");
+        domUtils.hide(dom.byId('bottomPanel'));
+        // Create map
+      var map = new Map("mapDiv",
+        { 
+          basemap: "hybrid",
+          center: [26.273, 39.199],
+          sliderPosition: "top-right",
+          infoWindow: popup,
+      zoom: 11
+        });
+
+/*
+measurement = new Measurement({
+                map: map
+              }, dom.byId("measurementDiv"));
+              measurement.hideTool("location")
+              measurement.startup();
+domUtils.hide(dom.byId('measurementDiv'));
+*/
+
+var template = new PopupTemplate({
+          title: "Details",
+          description: "{ektasi}"
+        });
+
+var FirePerimeters_template = new PopupTemplate({
+          title: "Fire Perimeters",
+          description: "HMEROMHNIA: {HMEROMHNIA}"
+        });
+
+     // domUtils.hide(dom.byId('waiting_results'));
+     // domUtils.hide(dom.byId('combo_results'));
+
+      var gp = new Geoprocessor(gpServiceUrl);
+      var gp_arrival = new Geoprocessor(gpServiceUrl_arrival);
+      var gp_major = new Geoprocessor(gpServiceUrl_MAJOR);
+      var gp_ROS = new Geoprocessor(gpServiceUrl_ROS);
+      var gp_FLI = new Geoprocessor(gpServiceUrl_FLI);
+      var gp_FLOW = new Geoprocessor(gpServiceUrl_FLOW);
+      var gp_ClosestDex = new Geoprocessor(gpServiceUrl_CloDex);
+      var gp_ClosestHydrants = new Geoprocessor(gpServiceUrl_CloHydrants);
+      var gp_ClosestPumbs = new Geoprocessor(gpServiceUrl_CloPumbs);
+
+      $("#showArchiveMTTModal").draggable({ handle: ".modal-header" });
+      $("#geosearchModal").draggable({ handle: ".modal-header" });
+
+      
+
+
+        function initSlider() {
+          var timeSlider = new TimeSlider({
+            style: "width: 100%;"
+          }, dom.byId("timeSliderDiv"));
+          map.setTimeSlider(timeSlider);
+          
+          var timeExtent = new TimeExtent();
+          timeExtent.startTime = new Date("1/1/1974 UTC");
+          timeExtent.endTime = new Date("12/31/2009 UTC");
+          timeSlider.setThumbCount(2);
+          timeSlider.createTimeStopsByTimeInterval(timeExtent, 2, "esriTimeUnitsYears");
+          timeSlider.setThumbIndexes([0,1]);
+          timeSlider.setThumbMovingRate(2000);
+          timeSlider.startup();
+          
+          //add labels for every other time stop
+          var labels = arrayUtils.map(timeSlider.timeStops, function(timeStop, i) { 
+            if ( i % 2 === 0 ) {
+              return timeStop.getUTCFullYear(); 
+            } else {
+              return "";
+            }
+          }); 
+          
+          timeSlider.setLabels(labels);
+          
+          timeSlider.on("time-extent-change", function(evt) {
+            var startValString = evt.startTime.getUTCFullYear();
+            var endValString = evt.endTime.getUTCFullYear();
+            dom.byId("daterange").innerHTML = "<i>" + startValString + " and " + endValString  + "<\/i>";
+          });
+        }
+
+
+
+function GP_Closesest_Dex_method(arg)
+      {
+
+        if (arg == 1) //dexamenes
+        {
+          featuresClosest = [];
+        featuresClosest.push(showTruckLocationgraphic);
+        var featureSet = new FeatureSet();
+        featureSet.features = featuresClosest;
+        var params = { "Input_locations": featureSet, "WATERTANKS_TO_FIND": 3 };
+
+        gp_ClosestDex.submitJob(params, gpJobComplete_ClosestDex, gpJobStatus, gpJobFailed);
+         }
+         else 
+         if (arg == 2) //dexamenes
+        {
+          featuresClosest = [];
+        featuresClosest.push(showTruckLocationgraphic);
+        var featureSet = new FeatureSet();
+        featureSet.features = featuresClosest;
+        var params = { "Input_locations": featureSet, "Number_of_KROUNOI_to_find": 3 };
+
+        gp_ClosestHydrants.submitJob(params, gpJobComplete_ClosestHydrants, gpJobStatus, gpJobFailed);
+         }
+         else 
+         if (arg == 3) //dexamenes
+        {
+          featuresClosest = [];
+        featuresClosest.push(showTruckLocationgraphic);
+        var featureSet = new FeatureSet();
+        featureSet.features = featuresClosest;
+        var params = { "Input_locations": featureSet, "Number_WATER_FIND": 3 };
+
+        gp_ClosestPumbs.submitJob(params, gpJobComplete_ClosestPumps, gpJobStatus, gpJobFailed);
+         }
+
+      }
+     
+function GP_FLI_method(user_arg, date_arg)
+      {
+       // alert("GP_major_method1");
+        var params = {
+          Mtt_Rast_FIRELINE_File: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_FliMap.asc\"}",
+          Calculate_Date:"\""+date_arg+"\"" ,
+          Calculate_User:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp_FLI.submitJob(params, gpJobComplete_FLI, gpJobStatus_major, gpJobFailed_major);
+         // alert("mtt finished");
+      };
+
+      function GP_major_method(user_arg, date_arg)
+      {
+        //alert("GP_major_method1");
+        var params = {
+          MAJORPATH: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_MTTMajorPaths.zip\"}",
+          DATESA:"\""+date_arg+"\"" ,
+          USERID:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp_major.submitJob(params, gpJobComplete_major, gpJobStatus_major, gpJobFailed_major);
+         // alert("mtt finished");
+      };
+
+function GP_FLOW_method(user_arg, date_arg)
+      {
+        //alert("GP_major_method1");
+        var params = {
+          FLOWPATH: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_MTTFlowPaths.zip\"}",
+          DATESA:"\""+date_arg+"\"" ,
+          USERID:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp_FLOW.submitJob(params, gpJobComplete_FLOW, gpJobStatus_major, gpJobFailed_major);
+         // alert("mtt finished");
+      };
+
+function GP_ROS_method(user_arg, date_arg)
+      {
+        //alert("gp1");
+        var params = {
+          Mtt_Rast_ROS_File: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_ROS.asc\"}",
+          Calculate_Date:"\""+date_arg+"\"" ,
+          Calculate_User:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp_ROS.submitJob(params, gpJobComplete_ROS, gpJobStatus, gpJobFailed);
+         // alert("mtt finished");
+      };
+
+      function GP_ignition_point_method(user_arg, date_arg)
+      {
+        //alert("gp1");
+        var params = {
+          Mtt_Rast_IGNITION_File: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_MTTignition.asc\"}",
+          Calculate_Date:"\""+date_arg+"\"" ,
+          Calculate_User:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp.submitJob(params, gpJobComplete, gpJobStatus, gpJobFailed);
+         // alert("mtt finished");
+      };
+
+      function GP_arrival_method(user_arg,date_arg)
+      {
+        //alert("in GP_arrival_method");
+        var params = {
+          Mtt_Rast_ARRIVAL_File: "{\"url\":\"http://195.251.137.10/mttresults/mtt_v2/"+user_arg+"/"+user_arg+"_"+date_arg+"_ArrivalTime.asc\"}",
+          Calculate_Date:"\""+date_arg+"\"" ,
+          Calculate_User:"\""+user_arg+"\""
+        };
+        //cleanup any results from previous runs 
+        gp_arrival.submitJob(params, gpJobComplete_arrival, gpJobStatus_arrival, gpJobFailed_arrival);
+         // alert("mtt finished");
+      };
+
+function gpJobComplete_ClosestDex(jobinfo)
+      {
+        
+
+        if(jobinfo.jobStatus == "esriJobSucceeded")
+        {
+          gp_ClosestDex.getResultData(jobinfo.jobId,"Closest_Routes",ClosestDexResult);
+        }
+      }  
+function gpJobComplete_ClosestHydrants(jobinfo)
+      {
+        
+
+        if(jobinfo.jobStatus == "esriJobSucceeded")
+        {
+          gp_ClosestHydrants.getResultData(jobinfo.jobId,"Closest_Routes",ClosestDexResult);
+        }
+        
+
+
+      }
+
+function gpJobComplete_ClosestPumps(jobinfo)
+      {
+        
+
+        if(jobinfo.jobStatus == "esriJobSucceeded")
+        {
+          gp_ClosestPumbs.getResultData(jobinfo.jobId,"Closest_Routes",ClosestDexResult);
+        }
+        
+
+
+      }
+
+function ClosestDexResult(outputresult)
+      {
+        $("#waiting_resultsModal").modal("hide"); 
+        map.graphics.remove(featuresClosest);
+        clearTruckLocation();
+
+        var truckPos = dom.byId("ign_point_input_closest").value;
+        var truckPos_array = truckPos.split(',');
+      
+
+                var pt = new Point(parseFloat(truckPos_array[0]), parseFloat(truckPos_array[1]));
+                addClosestFacilityGraphic(pt);
+
+        var features = outputresult.value.features;
+        if (features.length>0)
+        {
+          //alert("OK");
+          var feature = features[0];
+          //map.graphics.remove(feature);
+          if (closestFacilitySelected == 1)
+           var symbol = new SimpleLineSymbol().setColor(new Color([0,0,255]));
+         else if (closestFacilitySelected == 2)
+           var symbol = new SimpleLineSymbol().setColor(new Color([255,0,0]));
+          else if (closestFacilitySelected == 3)
+           var symbol = new SimpleLineSymbol().setColor(new Color([0,197,255]));
+
+          feature.setSymbol(symbol);
+            map.graphics.add(feature);
+        }
+
+      }
+
+
+
+function gpJobComplete_FLI(jobinfo)
+      {
+        
+
+      }
+
+
+function gpJobComplete_ROS(jobinfo)
+      {
+
+        
+
+      }
+
+
+function gpJobComplete_FLOW(jobinfo)
+      {
+
+
+      if(jobinfo.jobStatus !== "esriJobFailed")
+        {
+          gp_FLOW.getResultData(jobinfo.jobId,"OUTENTENT",zoomToMTTResult);
+        }
+
+      }
+
+function gpJobComplete_major(jobinfo)
+      {
+var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+
+//alert(window.mm);
+      var file_to_check = "http://195.251.137.10/mttresults/mtt_v2/"+user+"/"+user+"_"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"_CROWNSTATE.asc";
+
+
+var imageParameters = new ImageParameters();
+
+          //layer.setLayerDefinitions takes an array.  The index of the array corresponds to the layer id.
+          //In the sample below I add an element in the array at 3,4, and 5.
+          //Those array elements correspond to the layer id within the remote ArcGISDynamicMapServiceLayer
+          var layerDefs = [];
+         // alert("definition="+"User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"'");
+
+        var selected_hour = window.hh;
+      if (selected_hour<10)
+          selected_hour = parseInt(selected_hour,10);
+
+        var selected_min = window.mm;
+        if (selected_min<10)
+            selected_min = parseInt(selected_min,10);
+
+
+
+
+         layerDefs[0] = "User_ID ='"+user+"' AND DATE =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [0];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+          
+          if (MajorPathslayer == null)
+          {
+           MajorPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+         map.addLayer(MajorPathslayer)
+          }
+
+      }
+
+
+function gpJobComplete_arrival(jobinfo)
+      {
+        //alert("JOB arrival complete:");
+        //gp.getResultData(jobInfo.jobId,  displayResult);
+        //alert("JOB complete2");
+
+      var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+
+//alert(window.mm);
+      var file_to_check = "http://195.251.137.10/mttresults/mtt_v2/"+user+"/"+user+"_"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"_CROWNSTATE.asc";
+
+      var selected_hour = window.hh;
+      if (selected_hour<10)
+          selected_hour = parseInt(selected_hour,10);
+
+        var selected_min = window.mm;
+        if (selected_min<10)
+            selected_min = parseInt(selected_min,10);
+
+var imageParameters = new ImageParameters();
+
+          //layer.setLayerDefinitions takes an array.  The index of the array corresponds to the layer id.
+          //In the sample below I add an element in the array at 3,4, and 5.
+          //Those array elements correspond to the layer id within the remote ArcGISDynamicMapServiceLayer
+          var layerDefs = [];
+        //  alert("definition="+"User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"'");
+         layerDefs[5] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [5];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (MTTRasterLayer == null)
+         {
+          MTTRasterLayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(MTTRasterLayer);
+        }
+      }
+
+
+      function gpJobComplete(jobinfo)
+      {
+        //alert("JOB complete:");
+        //gp.getResultData(jobInfo.jobId,  displayResult);
+        //alert("JOB complete2");
+      }
+        
+ 
+
+      function gpJobStatus(jobinfo)
+      {
+        //domUtils.show(dom.byId('status'));
+        var jobstatus = '';
+        switch (jobinfo.jobStatus) {
+          case 'esriJobSubmitted':
+            jobstatus = 'Submitted...';
+            break;
+          case 'esriJobExecuting':
+            jobstatus = 'Executing...';
+            break;
+          case 'esriJobSucceeded':
+         // alert("JOB SCCEDDED!");
+            //domUtils.hide(dom.byId('status'));
+            break;
+        }
+        //dom.byId('status').innerHTML = jobstatus;
+
+      }
+
+function gpJobStatus_arrival(jobinfo)
+      {
+        //domUtils.show(dom.byId('status'));
+        var jobstatus = '';
+        switch (jobinfo.jobStatus) {
+          case 'esriJobSubmitted':
+            jobstatus = 'Submitted...';
+            break;
+          case 'esriJobExecuting':
+            jobstatus = 'Executing...';
+            break;
+          case 'esriJobSucceeded':
+          //alert("JOB arrival SCCEDDED!");
+            //domUtils.hide(dom.byId('status'));
+            break;
+        }
+        //dom.byId('status').innerHTML = jobstatus;
+
+      }
+
+function gpJobStatus_major(jobinfo)
+      {
+        //domUtils.show(dom.byId('status'));
+        var jobstatus = '';
+        switch (jobinfo.jobStatus) {
+          case 'esriJobSubmitted':
+            jobstatus = 'Submitted...';
+            break;
+          case 'esriJobExecuting':
+            jobstatus = 'Executing...';
+            break;
+          case 'esriJobSucceeded':
+          //alert("JOB major SCCEDDED!");
+            //domUtils.hide(dom.byId('status'));
+            break;
+        }
+        //dom.byId('status').innerHTML = jobstatus;
+
+      }
+
+function gpJobFailed(error)
+      {
+       
+      alert("ERROR:"+error);
+      }
+        
+
+      function gpJobFailed_arrival(error)
+      {
+       
+      alert("ERROR aRRIVAL:"+error);
+      }
+
+ function gpJobFailed_major(error)
+      {
+       
+      alert("ERROR major:"+error);
+      }
+
+ 
+
+      
+
+      map.on("click", myClickHandler);
+
+        //alert("clicked");
+        parser.parse();
+
+        var slider = new HorizontalSlider(
+        {
+        name: "slider",
+        value: 45,
+        minimum: 0,
+        maximum: 360,
+        intermediateChanges: true,
+        style: "width:180px;height:80px;",
+        onChange: function(value){
+          var angle = parseFloat(value).toFixed(0);
+          var angleInt = parseInt(angle);
+            dom.byId("sliderValue").value = angle;
+            $("#compassimg").rotate(angleInt);
+        }
+        }, 
+        "slider").startup();
+
+
+
+        function myClickHandler(event) 
+        {
+
+          if (setignPointOnMap == 1)
+              {
+                clearLocation();
+                var point2 = new Point(event.mapPoint.x, event.mapPoint.y);
+                var result2 = webMercatorUtils.webMercatorToGeographic(point2);
+
+                res = parseFloat(result2.x).toFixed(2)+ "," + parseFloat(result2.y).toFixed(2);
+                dom.byId("ign_point_input").value = res;
+
+                var pt = new Point(parseFloat(result2.x).toFixed(2), parseFloat(result2.y).toFixed(2));
+                addFireGraphic(pt);
+                //alert("1");
+            }
+            if (setignPointOnMapClosest == 1)
+              {
+                //alert("1a0");
+                clearTruckLocation();
+                map.graphics.clear();
+                //map.graphics.remove(featuresClosest);
+                var point2 = new Point(event.mapPoint.x, event.mapPoint.y);
+                var result2 = webMercatorUtils.webMercatorToGeographic(point2);
+
+                res = parseFloat(result2.x).toFixed(2)+ "," + parseFloat(result2.y).toFixed(2);
+                dom.byId("ign_point_input_closest").value = res;
+
+                var pt = new Point(parseFloat(result2.x).toFixed(2), parseFloat(result2.y).toFixed(2));
+                addClosestFacilityGraphic(pt);
+                //GP_Closesest_Dex_method();
+            }
+        }
+
+        function orientationChanged() 
+        {
+          if(map){
+            map.reposition();
+            map.resize();
+          }
+        }
+        
+        function initFunc(map) 
+        {
+          if( navigator.geolocation ) {  
+            navigator.geolocation.getCurrentPosition(zoomToLocation, locationError);
+            //watchId = navigator.geolocation.watchPosition(showLocation, locationError);
+          } else {
+            alert("Browser doesn't support Geolocation. Visit http://caniuse.com to see browser support for the Geolocation API.");
+          }
+        }
+
+ 
+
+
+        function zoomToLocation(location) 
+        {
+          var pt = new Point(location.coords.longitude, location.coords.latitude);
+          addGraphic(pt);
+          map.centerAndZoom(pt, 16);
+        }
+
+         function currentPosClosest(location) 
+        {
+          setignPointOnMapClosest = 0;
+          var pt = new Point(location.coords.longitude, location.coords.latitude);
+          addClosestFacilityGraphic(pt);
+          res = parseFloat(location.coords.longitude).toFixed(2)+ "," + parseFloat(location.coords.latitude).toFixed(2);
+          dom.byId("ign_point_input_closest").value = res;
+
+
+        }
+
+        function currentPosIgnitionPoint(location) 
+        {
+          setignPointOnMap = 0;
+          var pt = new Point(location.coords.longitude, location.coords.latitude);
+          addFireGraphic(pt);
+          res = parseFloat(location.coords.longitude).toFixed(2)+ "," + parseFloat(location.coords.latitude).toFixed(2);
+          dom.byId("ign_point_input").value = res;
+
+
+        }
+
+
+        function locationError(error) 
+        {
+          //error occurred so stop watchPosition
+          if( navigator.geolocation ) {
+            navigator.geolocation.clearWatch(watchId);
+          }
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              alert("Location not provided");
+              break;
+
+            case error.POSITION_UNAVAILABLE:
+              alert("Current location not available");
+              break;
+
+            case error.TIMEOUT:
+              alert("Timeout");
+              break;
+
+            default:
+              alert("unknown error");
+              break;
+          }
+        }
+
+        function clearTruckLocation()
+        {
+         if (showTruckLocationgraphic != null)
+          map.graphics.remove(showTruckLocationgraphic);
+        
+        }
+
+        function clearLocation()
+        {
+         if (showLocationgraphic != null)
+          map.graphics.remove(showLocationgraphic);
+        
+        setignPointOnMap = 0;
+
+        }
+
+        function addGraphic(pt)
+        {
+          var symbol = new SimpleMarkerSymbol(
+            SimpleMarkerSymbol.STYLE_CIRCLE, 
+            12, 
+            new SimpleLineSymbol(
+              SimpleLineSymbol.STYLE_SOLID,
+              new Color([210, 105, 30, 0.5]), 
+              8
+            ), 
+            new Color([210, 105, 30, 0.9])
+          );
+          showLocationgraphic = new Graphic(pt, symbol);
+          map.graphics.add(showLocationgraphic);
+        }
+
+        function addClosestFacilityGraphic(pt)
+        {
+          var symbol =  new PictureMarkerSymbol(
+          {
+          "url":"images/truck.png",
+          "height":20,
+          "width":20,
+          "type":"esriPMS"
+          });
+
+          showTruckLocationgraphic = new Graphic(pt, symbol);
+          map.graphics.add(showTruckLocationgraphic);
+
+           
+        }
+
+
+        function addFireGraphic(pt)
+        {
+          var symbol = new SimpleMarkerSymbol(
+            SimpleMarkerSymbol.STYLE_CIRCLE, 
+            24, 
+            new SimpleLineSymbol(
+              SimpleLineSymbol.STYLE_SOLID,
+              new Color([210, 205, 30, 0.5]), 
+              8
+            ), 
+            new Color([210, 205, 30, 0.9])
+          );
+
+        var symbol =  new PictureMarkerSymbol(
+          {
+          "url":"images/fire50.png",
+          "height":20,
+          "width":20,
+          "type":"esriPMS"
+          });
+
+          showLocationgraphic = new Graphic(pt, symbol);
+          map.graphics.add(showLocationgraphic);
+        }
+
+
+      esriConfig.defaults.io.proxyUrl = "/sproxy/proxy.ashx";
+        // Wire UI Events
+
+
+on(dom.byId("AreaDistanceId"),"click", function() 
+    {
+        /* 
+        if (AreaDistanceShowHide == "hide")
+          {
+            AreaDistanceShowHide = "show";
+            domUtils.show(dom.byId('measurementDiv'));
+             measurement.setTool("area", true);
+            measurement.setTool("distance", true);
+            
+          } 
+          else if (AreaDistanceShowHide == "show")
+          {
+            domUtils.hide(dom.byId('measurementDiv'));
+            AreaDistanceShowHide = "hide";
+            measurement.clearResult();
+            measurement.setTool("area", false);
+            measurement.setTool("distance", false);
+            
+            //measurement.destroy();
+          }
+          */
+
+  });
+
+
+on(dom.byId("GP_Closesest_Dex_btn"),"click", function() 
+    {
+
+         $("#waiting_resultsModal").modal("show"); 
+
+        if (closestFacilitySelected == 1)
+          GP_Closesest_Dex_method(1);
+        else if (closestFacilitySelected == 2)
+          GP_Closesest_Dex_method(2);
+      else if (closestFacilitySelected == 3)
+          GP_Closesest_Dex_method(3);
+
+    });
+
+
+on(dom.byId("ClosestHydrantsId"),"click", function() 
+    {
+        $("#GP_Closesest_Dex_btn").html('Find Closest water tanks');
+        closestFacilitySelected = 1;
+        $("#ClosestModal").modal("show"); 
+
+     
+
+    });
+
+
+
+on(dom.byId("ClosestDexId"),"click", function() 
+    {
+       $("#GP_Closesest_Dex_btn").html('Find Closest Hydrants');
+        closestFacilitySelected = 2;
+        $("#ClosestModal").modal("show"); 
+
+     
+    });
+
+on(dom.byId("ClosestPumpsId"),"click", function() 
+    {
+       $("#GP_Closesest_Dex_btn").html('Find Closest pumping stations');
+        closestFacilitySelected = 3;
+        $("#ClosestModal").modal("show"); 
+
+     
+
+    });
+
+
+on(dom.byId("Tools_Clear"),"click", function() 
+    { 
+
+      map.graphics.clear();
+        clearTruckLocation();
+        setignPointOnMapClosest = 0;
+    });
+
+ 
+
+  on(dom.byId("FireHistoryIgnPointsId_Clear"),"click", function() 
+    { 
+      domUtils.hide(dom.byId('bottomPanel'));
+      var FireHistoryLayer = map.getLayer("FireHistoryLayer");
+       
+        if (FireHistoryLayer!= null)
+          {
+            
+            map.removeLayer(FireHistoryLayer);
+          }
+
+       
+         var FireHistoryFeatureLayer = map.getLayer("FireHistoryFeatureLayer");
+       
+        if (FireHistoryFeatureLayer!= null)
+          {
+            
+            map.removeLayer(FireHistoryFeatureLayer);
+          }
+
+
+
+            //perimeters
+
+           var FirePerimeterFeatureLayer = map.getLayer("FirePerimeterFeatureLayer");
+       
+        if (FirePerimeterFeatureLayer!= null)
+          {
+            
+            map.removeLayer(FirePerimeterFeatureLayer);
+          }
+
+       
+         var FirePerimetersLayer = map.getLayer("FirePerimetersLayer");
+       
+        if (FirePerimetersLayer!= null)
+          {
+            
+            map.removeLayer(FirePerimetersLayer);
+          }
+
+
+
+
+             
+    }); 
+
+
+on(dom.byId("FirePerimetersId"),"click", function() 
+    { 
+            domUtils.show(dom.byId('bottomPanel'));
+            var opLayer = new ArcGISDynamicMapServiceLayer("http://195.251.137.13:6080/arcgis/rest/services/visualization/FIRE_PERIMETERS/MapServer");
+        opLayer.setVisibleLayers([4]);
+        opLayer.id = "FirePerimetersLayer";
+        //apply a definition expression so only some features are shown 
+       // var layerDefinitions = [];
+        //layerDefinitions[0] = "FIELD_KID=1000148164";
+        //opLayer.setLayerDefinitions(layerDefinitions);
+
+        //add the gas fields layer to the map 
+        map.addLayers([opLayer]);
+
+        map.on("layers-add-result", initSlider);
+
+        FirePerimeterFeatureLayer = map.getLayer("FirePerimeterFeatureLayer");
+        
+        if (FirePerimeterFeatureLayer == null)
+                  {
+
+                       FirePerimeterFeatureLayer =  new FeatureLayer("http://195.251.137.13:6080/arcgis/rest/services/visualization/FIRE_PERIMETERS/MapServer/4", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                        infoTemplate: FirePerimeters_template,
+                        outFields: ["*"]
+                        
+                       
+                        });
+                        
+                        FirePerimeterFeatureLayer.id = "FirePerimeterFeatureLayer";
+                        map.addLayer(FirePerimeterFeatureLayer);
+                  }
+        else
+        {   
+
+            map.removeLayer(FirePerimeterFeatureLayer);
+            FirePerimeterFeatureLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/DATA_VISUAL/WILDFIRES/MapServer/4", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                       infoTemplate: FirePerimeters_template,
+                        outFields: ["*"]
+                        
+                        });
+
+            FirePerimeterFeatureLayer.id = "FirePerimeterFeatureLayer";
+            map.addLayer(FirePerimeterFeatureLayer);
+                      
+
+        }
+
+    });
+
+
+
+
+on(dom.byId("FireHistoryIgnPointsId"),"click", function() 
+    { 
+            domUtils.show(dom.byId('bottomPanel'));
+            var opLayer = new ArcGISDynamicMapServiceLayer("http://195.251.137.10:6080/arcgis/rest/services/DATA_VISUAL/WILDFIRES/MapServer");
+        opLayer.setVisibleLayers([6]);
+        opLayer.id = "FireHistoryLayer";
+        //apply a definition expression so only some features are shown 
+       // var layerDefinitions = [];
+        //layerDefinitions[0] = "FIELD_KID=1000148164";
+        //opLayer.setLayerDefinitions(layerDefinitions);
+
+        //add the gas fields layer to the map 
+        map.addLayers([opLayer]);
+
+        map.on("layers-add-result", initSlider);
+
+        FireHistoryFeatureLayer = map.getLayer("FireHistoryFeatureLayer");
+        
+        if (FireHistoryFeatureLayer == null)
+                  {
+
+                       FireHistoryFeatureLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/DATA_VISUAL/WILDFIRES/MapServer/6", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                        infoTemplate: template,
+                        outFields: ["*"]
+                        
+                       
+                        });
+                        
+                        FireHistoryFeatureLayer.id = "FireHistoryFeatureLayer";
+                        map.addLayer(FireHistoryFeatureLayer);
+                  }
+        else
+        {   
+
+            map.removeLayer(FireHistoryFeatureLayer);
+            FireHistoryFeatureLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/DATA_VISUAL/WILDFIRES/MapServer/6", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                       infoTemplate: template,
+                        outFields: ["*"]
+                        
+                        });
+
+            FireHistoryFeatureLayer.id = "FireHistoryFeatureLayer";
+            map.addLayer(FireHistoryFeatureLayer);
+                      
+
+        }
+
+    });
+
+   
+on(dom.byId("clearAllFireMgmtId"),"click", function() 
+    { 
+        var fireHydrantsLayer = map.getLayer("fireHydrantsLayer");
+        var pumpingStationsLayer = map.getLayer("pumpingStationsLayer");
+         var waterTanksLayer = map.getLayer("waterTanksLayer");
+       
+        if (pumpingStationsLayer!= null)
+          {
+            pumpingStationsLayer.visible = false;
+            pumpingStationsLayer.visibleAtMapScale = false;
+            map.removeLayer(pumpingStationsLayer);
+          }
+        if (fireHydrantsLayer!= null)
+          {
+            fireHydrantsLayer.visible = false;
+            fireHydrantsLayer.visibleAtMapScale = false;
+            map.removeLayer(fireHydrantsLayer);
+          }
+        
+         if (waterTanksLayer!= null)
+          {
+            waterTanksLayer.visible = false;
+            waterTanksLayer.visibleAtMapScale = false;
+            map.removeLayer(waterTanksLayer);
+          }
+        // if (pumStationLayer!= null)
+       //   map.removeLayer(pumStationLayer);
+
+
+      //   pumStationLayer = map.getLayer("pumStationLayer");
+       
+      
+
+          
+
+    });
+
+
+
+on(dom.byId("pumpingStationsId"),"click", function() 
+    { 
+         pumpingStationsLayer = map.getLayer("pumpingStationsLayer");
+        
+        if (pumpingStationsLayer == null)
+                  {
+
+                       pumpingStationsLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/1", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                        outFields: ["*"]
+                        
+                       
+                        });
+                        
+                        pumpingStationsLayer.id = "pumpingStationsLayer";
+                        map.addLayer(pumpingStationsLayer);
+                  }
+        else
+        {   
+
+            map.removeLayer(pumpingStationsLayer);
+            pumpingStationsLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/1", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                       
+                        outFields: ["*"]
+                        
+                        });
+
+            pumpingStationsLayer.id = "pumpingStationsLayer";
+            map.addLayer(pumpingStationsLayer);
+                      
+
+        }
+
+        
+
+
+    });
+
+
+on(dom.byId("fireHydrantsId"),"click", function() 
+    { 
+         fireHydrantsLayer = map.getLayer("fireHydrantsLayer");
+        
+        if (fireHydrantsLayer == null)
+                  {
+
+                       fireHydrantsLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/2", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                        outFields: ["*"]
+                        
+                       
+                        });
+                        
+                        fireHydrantsLayer.id = "fireHydrantsLayer";
+                        map.addLayer(fireHydrantsLayer);
+                  }
+        else
+        {   
+
+            map.removeLayer(fireHydrantsLayer);
+            fireHydrantsLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/2", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                       
+                        outFields: ["*"]
+                        
+                        });
+
+            fireHydrantsLayer.id = "fireHydrantsLayer";
+            map.addLayer(fireHydrantsLayer);
+                      
+
+        }
+
+        
+
+
+    });
+
+
+
+    on(dom.byId("waterTanksId"),"click", function() 
+    { 
+         waterTanksLayer = map.getLayer("waterTanksLayer");
+        
+        if (waterTanksLayer == null)
+                  {
+
+                       waterTanksLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/3", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                        outFields: ["*"],
+                        
+                        infoTemplate: template
+                        });
+                        
+                        waterTanksLayer.id = "waterTanksLayer";
+                        map.addLayer(waterTanksLayer);
+                  }
+        else
+        {   
+
+            map.removeLayer(waterTanksLayer);
+            waterTanksLayer =  new FeatureLayer("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MANAG_DATA_LSV/MapServer/3", {
+                        mode: FeatureLayer.MODE_SNAPSHOT,
+                       
+                        outFields: ["*"],
+                        infoTemplate: template
+                        });
+
+            waterTanksLayer.id = "waterTanksLayer";
+            map.addLayer(waterTanksLayer);
+                      
+
+        }
+
+        
+
+
+    });
+
+
+
+
+   on(dom.byId("downloadResults_id"),"click", function() 
+    { 
+  
+        var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+      var layerDefs = [];
+         
+
+      var description_selected = $("#ArchiveMTTResults_id option:selected" ).attr('value');
+      if (description_selected.indexOf(",")>0)
+      {
+      var description_selected_array = description_selected.split(',');
+      var description_selected_dateTime_init = description_selected_array[0];
+      var description_selected_date = description_selected_dateTime_init.split(" ")[0];
+      var description_selected_time_all = description_selected_dateTime_init.split(" ")[1];
+      var description_selected_hour = description_selected_time_all.split(":")[0];
+      if (description_selected_hour<10)
+          description_selected_hour = parseInt(description_selected_hour, 10);
+
+      var description_selected_min = description_selected_time_all.split(":")[1];
+      if (description_selected_min<10)
+          description_selected_min = parseInt(description_selected_min, 10);
+      var description_selected_date = new Date(description_selected_date);
+      var description_selected_y = description_selected_date.getFullYear();
+      var  description_selected_day= description_selected_date.getDate();
+      var description_selected_month = description_selected_date.getMonth()+1;
+
+      var ziplink = "http://195.251.137.10/mttresults/mtt_v2/"+user+"/"+user+"_"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"_allresults.zip";
+
+
+
+     $("#downloadResults_id").attr({
+        "href" : ziplink,
+        "src" : "images/download_zip.png",
+        "width"  : "100",
+        "alt" : "Download Results"}
+
+        );
+   }
+   else
+   {
+    $("#downloadResults_id").attr({
+        "href" : "#",
+        "src" : "images/download_zip.png",
+        "width"  : "100",
+        "alt" : "Download Results"}
+        );
+   }
+    });
+
+
+on(dom.byId("MTT_archive_id"),"click", function() 
+    { 
+  
+     if (all_descriptions == null)
+        getArchiveMTT();
+
+    $("#showArchiveMTTModal").modal("show"); 
+    });
+
+
+on(dom.byId("MTT_showResults"),"click", function() 
+    { 
+  
+     
+    $("#showMTTOutputsModal").modal("show"); 
+    });
+
+on(dom.byId("map_ignpoint_closest_id"),"click", function() 
+    { 
+      clearTruckLocation();
+      setignPointOnMapClosest = 1;
+    $("#ClosestModal").modal("hide"); 
+    });
+
+    on(dom.byId("map_ignpoint_id"),"click", function() 
+    { 
+      clearLocation();
+      setignPointOnMap = 1;
+    $("#geosearchModal").modal("hide"); 
+    });
+
+  
+    on(dom.byId("increase_sim_id"),"click", function() 
+    { 
+      var prev_val = dom.byId("sim_time").value;
+      var increased_val = parseInt(prev_val) + 1;
+      if (increased_val>5)
+        increased_val = 5;
+      dom.byId("sim_time").value = increased_val;
+
+    });
+
+  on(dom.byId("increase_sim_id_min"),"click", function() 
+    { 
+    var prev_val = dom.byId("sim_time_min").value;
+    var increased_val = parseInt(prev_val) + 10;
+    if (increased_val>60)
+      increased_val = 60;
+    dom.byId("sim_time_min").value = increased_val;
+
+    });
+
+on(dom.byId("increase_ws"),"click", function() 
+{ 
+  var prev_val = dom.byId("ws_input").value;
+  var increased_val = parseInt(prev_val) + 5;
+  if (increased_val>30)
+    increased_val = 30;
+  dom.byId("ws_input").value = increased_val;
+
+});
+
+on(dom.byId("increase_wd"),"click", function() 
+{ 
+  var prev_val = dom.byId("wd_input").value;
+  var increased_val = parseInt(prev_val) + 45;
+  if (increased_val>360)
+    increased_val = 360;
+  dom.byId("wd_input").value = increased_val;
+  $("#compassimg").rotate(increased_val);
+});
+
+
+on(dom.byId("decrease_sim_id"),"click", function() 
+{ 
+  var prev_val = dom.byId("sim_time").value;
+  var increased_val = parseInt(prev_val) - 1;
+  if (increased_val>5)
+    increased_val = 5;
+  if (increased_val<0)
+    increased_val = 0;
+dom.byId("sim_time").value = increased_val;
+
+});
+
+
+on(dom.byId("decrease_sim_id_min"),"click", function() { 
+  var prev_val = dom.byId("sim_time_min").value;
+  var increased_val = parseInt(prev_val) - 10;
+  if (increased_val>60)
+    increased_val = 60;
+  if (increased_val<0)
+    increased_val = 0;
+dom.byId("sim_time_min").value = increased_val;
+
+});
+
+on(dom.byId("decrease_ws"),"click", function() { 
+  var prev_val = dom.byId("ws_input").value;
+  var increased_val = parseInt(prev_val) - 5;
+  if (increased_val<0)
+    increased_val = 0;
+dom.byId("ws_input").value = increased_val;
+
+
+});
+
+on(dom.byId("decrease_wd"),"click", function() 
+{ 
+  var prev_val = dom.byId("wd_input").value;
+  var increased_val = parseInt(prev_val) - 45;
+  if (increased_val<0)
+    increased_val = 0;
+  dom.byId("wd_input").value = increased_val;
+  $("#compassimg").rotate(increased_val);
+
+});
+
+
+
+on(dom.byId("GetReal_ws_id"),"click", function() 
+{               
+          var ws_php = esriRequest({
+          url: "http://api.openweathermap.org/data/2.5/weather?lat=39.03&lon=26.6&units=metric&appid=d4c8d88544bd3ddd83f75bdf661341f0",
+  
+        handleAs: "json"
+
+        });
+        ws_php.then(GetReal_ws_requestSucceeded, GetReal_ws_requestFailed);
+
+});
+
+
+on(dom.byId("GetReal_wd_id"),"click", function() 
+{               
+          var ws_php = esriRequest(
+          {
+          url: "http://api.openweathermap.org/data/2.5/weather?lat=39.03&lon=26.6&units=metric&appid=d4c8d88544bd3ddd83f75bdf661341f0",
+  
+          handleAs: "json"
+
+          });
+          ws_php.then(GetReal_wd_requestSucceeded, GetReal_wd_requestFailed);
+
+        
+});
+
+ 
+
+on(dom.byId("StartMTTbtn"),"click", function() 
+{ 
+
+          //clear previous maps
+
+          clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+
+
+            id_val = guid();
+            
+
+           var sim_time = parseInt(document.getElementById("sim_time_min").value) + parseInt(document.getElementById("sim_time").value)*60;
+
+           var ign_x = dom.byId("ign_point_input").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input").value.split(",")[1];
+           var point2 = new Point(ign_x, ign_y);
+          var result2 = webMercatorUtils.geographicToWebMercator(point2);
+          var ign_x_final = parseInt(result2.x);
+          var ign_y_final = parseInt(result2.y);
+
+           var d = new Date();
+           window.hh = d.getHours();
+          window.mm = d.getMinutes();
+          var  day= d.getDate();
+          var month = d.getMonth()+1;
+          var y = d.getFullYear();
+
+          var fuel_category_selected = parseInt($("#fuel_cat_id").prop('selectedIndex'));
+
+        if (sim_time == 0)
+          alert("Specify simulation time"); 
+        if (sim_time > 360)
+            alert("Maximum simulation time exceeded"); 
+
+         $("#geosearchModal").modal("hide");  
+        $("#waiting_resultsModal").modal("show"); 
+
+
+       // domUtils.show(dom.byId('waiting_results'));
+      //domUtils.show(dom.byId('combo_results'));
+        var fire_php = esriRequest(
+          {
+            url: "http://195.251.137.12/AppFolder/insert_new.php",
+            content: 
+            {
+            Id: id_val,
+            area: "Lesvos",
+            sim_time: sim_time,
+            speed: ws_input.value,
+            direction: wd_input.value,
+            x: ign_x_final,
+            y: ign_y_final,
+            xristis: "user1",
+            year: y,
+            month: month,
+            day: day,
+            hour: window.hh,
+            min: window.mm,
+            status: "started",
+            moistscenario: fuel_category_selected
+            },
+        handleAs: "text"
+
+        });
+        fire_php.then(requestSucceeded, requestFailed);
+
+});
+
+
+
+
+      function zoomToMTTResult(outputresult) 
+      {
+        //var theurl = outputresult.value; 
+        //console.log(theurl); 
+
+        var features = outputresult.value.features;
+        if (features.length>0)
+        {
+          //var feature = features[0];
+
+         //var myFeatureExtent = feature.geometry.getExtent();//graphicsUtils.graphicsExtent(feature);
+         //map.setExtent(myFeatureExtent, true);
+          var ign_x = dom.byId("ign_point_input").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input").value.split(",")[1];
+           var pt = new Point(ign_x, ign_y);
+            map.centerAndZoom(pt, 16);
+            $("#waiting_resultsModal").modal("hide"); 
+
+              //insert this simulation to the simulations description table
+            var sim_time = parseInt(document.getElementById("sim_time_min").value) + parseInt(document.getElementById("sim_time").value)*60;
+            
+            var d = new Date();
+            var  day= d.getDate();
+            var month = d.getMonth()+1;
+            var y = d.getFullYear();
+            var date_arg = new Date(y, month, day, window.hh, window.mm);
+
+            var ign_x = dom.byId("ign_point_input").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input").value.split(",")[1];
+           var fuel_category_selected = parseInt($("#fuel_cat_id").prop('selectedIndex'));
+
+          var description = "this is a description";
+          //alert(window.id_val);
+          //alert(id_val);
+
+            var description_request = esriRequest(
+          {
+            url: "http://195.251.137.12/AppFolder/insert_new_descr.php",
+            content: 
+            {
+            Id: id_val,
+            date: "'"+y+"-"+month+"-"+day+" "+window.hh+":"+window.mm+"'",//Y-m-d H:i:s
+            description: description,
+            x: ign_x,
+            y: ign_y,
+            sim_time_h: document.getElementById("sim_time").value,
+            sim_time_min: document.getElementById("sim_time_min").value,
+            speed: ws_input.value,
+            
+           direction: wd_input.value,
+            
+            moistscenario: fuel_category_selected
+       
+            
+            },
+        handleAs: "text"
+
+        });
+        description_request.then(requestSucceeded_descr, requestFailed_descr);
+
+
+      }
+
+     // domUtils.hide(dom.byId('waiting_results'));
+     // domUtils.hide(dom.byId('combo_results'));
+
+        /*
+        for (var f=0, fl=features.length; f<fl; f++) 
+          {
+           var feature = features[f];
+            feature.setSymbol(simpleLineSymbol);
+          map.graphics.add(feature);
+          }
+          */
+        
+       }
+
+on(dom.byId("current_ignpoint_closest_id"),"click", function() 
+{ 
+  clearTruckLocation();
+  if( navigator.geolocation ) {  
+         navigator.geolocation.getCurrentPosition(currentPosClosest, locationError);
+       }
+});
+
+
+on(dom.byId("current_ignpoint_id"),"click", function() 
+{ 
+  clearLocation();
+  if( navigator.geolocation ) {  
+         navigator.geolocation.getCurrentPosition(currentPosIgnitionPoint, locationError);
+       }
+});
+
+on(dom.byId("btnshowPos"),"click", function() { 
+  if( navigator.geolocation ) {  
+         navigator.geolocation.getCurrentPosition(zoomToLocation, locationError);
+       }
+});
+
+on(dom.byId("btnhidePos"),"click", function() 
+{ 
+  clearLocation();
+});
+
+on(dom.byId("MTT_id"),"click", function() 
+{ 
+
+  
+//retrieve archive simulations
+
+
+  $("#geosearchModal").modal("show"); 
+                // Bootstrap work-around
+                $("body").css("margin-right","0px");
+                $(".navbar").css("margin-right","0px");
+        
+});
+
+
+
+on(dom.byId("btnNatGeo"),"click", function() 
+{ 
+  if (openStreetMapLayer != null)
+          {  map.removeLayer(openStreetMapLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (veTileLayer != null)
+          {  map.removeLayer(veTileLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          $("#btnNationalGeographic_checkbox").prop("checked", true);
+         
+         if (legend) 
+            { 
+              //legend.destroyRecursive(true); 
+              legend.destroy();
+            } 
+
+          map.setBasemap("national-geographic");
+
+
+});
+
+      on(dom.byId("btnTopo"),"click", function() { 
+        if (openStreetMapLayer != null)
+           {  map.removeLayer(openStreetMapLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (veTileLayer != null)
+          {  map.removeLayer(veTileLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          $("#btnTopographic_checkbox").prop("checked", true);
+          map.setBasemap("topo");
+        });
+
+        
+        on(dom.byId("btnStreets"),"click", function() { 
+          if (openStreetMapLayer != null)
+            {  map.removeLayer(openStreetMapLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+        if (veTileLayer != null)
+          {  map.removeLayer(veTileLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          $("#btnStreets_checkbox").prop("checked", true);
+          map.setBasemap("streets");
+        });
+
+
+        on(dom.byId("btnImagery"),"click", function() { 
+          if (openStreetMapLayer != null) 
+            {  map.removeLayer(openStreetMapLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (veTileLayer != null)
+          {  map.removeLayer(veTileLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+           if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          $("#btnImagery_checkbox").prop("checked", true);
+          map.setBasemap("satellite");
+        });
+        
+        on(dom.byId("btnHybrid"),"click", function() { 
+          if (openStreetMapLayer != null)
+           {  map.removeLayer(openStreetMapLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (veTileLayer != null)
+          {  map.removeLayer(veTileLayer);
+              dom.byId("OSM_checkbox").checked = false;
+          }
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          //dom.byId("btnHybrid_checkbox").selected = true;
+          $("#btnHybrid_checkbox").prop("checked", true);
+          map.setBasemap("hybrid");
+        });
+      
+
+
+
+
+
+
+
+
+on(dom.byId("BingMap_aerial"),"click", function() { 
+
+//if (dom.byId("BingMaps_aerial_Typescheckbox").checked == true){
+//var  veTileLayer;
+  //var CoverTypeslayer = map.getLayer("CoverTypeslayer");
+
+  //if (CoverTypeslayer == null){
+          
+          if (veTileLayer == null)
+          {
+
+            veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_AERIAL
+        });
+          
+
+        map.addLayers([veTileLayer]);
+          }
+          else
+
+          {
+
+map.removeLayer(veTileLayer);
+veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_AERIAL
+        });
+          
+        map.addLayers([veTileLayer]);
+
+          }
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+
+          $("#BingMaps_aerial_Typescheckbox").prop("checked", true);
+
+        });
+
+on(dom.byId("BingMap_roads"),"click", function() { 
+
+          if (veTileLayer == null)
+          {
+
+            veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_ROAD
+        });
+        map.addLayers([veTileLayer]);
+          }
+          else
+            //veTileLayer.setMapStyle(esri.virtualearth.VETiledLayer.MAP_STYLE_ROAD)
+          {
+
+map.removeLayer(veTileLayer);
+veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_ROAD
+        });
+          
+        map.addLayers([veTileLayer]);
+            
+          }
+
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+          $("#BingMaps_roads_Typescheckbox").prop("checked", true);
+
+        });
+
+on(dom.byId("BingMap_aerial_label"),"click", function() { 
+
+
+           if (veTileLayer == null)
+          {
+
+            veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_AERIAL_WITH_LABELS
+        });
+        map.addLayers([veTileLayer]);
+          }
+          else
+            {
+
+map.removeLayer(veTileLayer);
+veTileLayer = new esri.virtualearth.VETiledLayer({
+          bingMapsKey: 'AtjWTcT-QaC_icT0xgD7Z7P9K9JFrFJi7el_mhDTFpDfx3SJFq0xQWEgwZyY1BO0',
+          mapStyle: esri.virtualearth.VETiledLayer.MAP_STYLE_AERIAL_WITH_LABELS
+        });
+          
+        map.addLayers([veTileLayer]);
+            
+          }
+
+          if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+
+          $("#BingMaps_aerial_label_Typescheckbox").prop("checked", true);
+           
+
+        });
+
+
+on(dom.byId("CoverTypes_id"),"click", function() { 
+
+
+
+if (CoverTypeslayer != null)
+          {  
+            map.removeLayer(CoverTypeslayer);   
+          }
+
+      CoverTypeslayer = new ArcGISTiledMapServiceLayer
+("http://195.251.137.10:6080/arcgis/rest/services/LESVOS/XRISEIS_GHS_LSV/MapServer");
+
+//map.addLayer(CoverTypeslayer);
+map.addLayers([CoverTypeslayer]);
+$("#CoverTypescheckbox").prop("checked", true);
+
+
+        });
+
+
+
+
+on(dom.byId("OpenStreetMap_id"),"click", function() { 
+
+
+if   (openStreetMapLayer != null)
+ map.removeLayer(openStreetMapLayer);
+
+           openStreetMapLayer = new OpenStreetMapLayer();
+        map.addLayer(openStreetMapLayer);
+        $("#OSM_checkbox").prop("checked", true);
+         
+ });
+
+
+
+
+
+on(dom.byId("geosearchModalClose"),"click", function() 
+{ 
+ 
+ setignPointOnMap = 0;
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+                  
+});
+
+
+on(dom.byId("StartMTTbtnHide2"),"click", function() 
+{ 
+  
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+});
+
+on(dom.byId("StartMTTbtnHide"),"click", function() 
+{ 
+  /*
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+*/
+});
+
+
+
+
+
+
+
+on(dom.byId("ArhiveMTTbtnHide"),"click", function() 
+{ 
+
+ $("#showArchiveMTTModal").modal("hide"); 
+
+/*
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+                  */
+});
+
+on(dom.byId("showArchiveMTTModalClose2"),"click", function() 
+{ 
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+});
+
+on(dom.byId("showArchiveMTTModalClose"),"click", function() 
+{ 
+  clearLocation();
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+});
+
+
+on(dom.byId("ArchiveMTTResults_id"),"change", function() 
+    { 
+
+
+         
+
+
+      var mtt_category_selected = parseInt($("#ArchiveMTTResults_id").prop('selectedIndex'));
+        //if (mtt_category_selected == 0)
+          
+          var description_selected = $("#ArchiveMTTResults_id option:selected" ).attr('value');
+          //alert(description_selected);
+
+          var description_selected_array = description_selected.split(',');
+          if (description_selected_array != "-1")
+          {
+          var description_selected_date = description_selected_array[0];
+          var description_selected_x = description_selected_array[1];
+          var description_selected_y = description_selected_array[2];
+          var description_selected_sim_time_h = description_selected_array[3];
+          var description_selected_sim_time_min = description_selected_array[4];
+          var description_selected_speed = description_selected_array[5];
+          var description_selected_direction = description_selected_array[6];
+          var description_selected_scenario = description_selected_array[7];
+         // alert(description_selected_scenario);
+          //$('[id=fuel_cat_id]').val(5);
+          $("#fuel_cat_id_archive").val(description_selected_scenario);
+          $("#sim_time_archive").val(description_selected_sim_time_h);
+          $("#sim_time_min_archive").val(description_selected_sim_time_min);
+          $("#ws_input_archive").val(description_selected_speed);
+          $("#wd_input_archive").val(description_selected_direction);
+          
+          $("#compassimg_archive").rotate(parseInt(description_selected_direction));
+          $("#ign_point_input_archive").val(description_selected_x +","+ description_selected_y);
+
+          var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+            var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+            var pt = new Point(ign_x, ign_y);
+            map.centerAndZoom(pt, 16);
+            clearLocation();
+
+            
+   if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+
+
+            addFireGraphic(pt);
+
+
+          }
+          else
+            clearLocation();
+
+         $("#mtt_archive_results_id").val(0);
+         
+         if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+            
+
+
+    });
+
+
+
+on(dom.byId("mtt_results_id"),"change", function() { 
+
+
+var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+
+      var selected_hour = window.hh;
+      if (selected_hour<10)
+          selected_hour = parseInt(selected_hour,10);
+
+        var selected_min = window.mm;
+        if (selected_min<10)
+            selected_min = parseInt(selected_min,10);
+
+
+var imageParameters = new ImageParameters();
+
+          //layer.setLayerDefinitions takes an array.  The index of the array corresponds to the layer id.
+          //In the sample below I add an element in the array at 3,4, and 5.
+          //Those array elements correspond to the layer id within the remote ArcGISDynamicMapServiceLayer
+          var layerDefs = [];
+        //  alert("definition="+"User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"'");
+         
+      
+
+    var mtt_category_selected = parseInt($("#mtt_results_id").prop('selectedIndex'));
+    if (mtt_category_selected == 0)
+      {
+
+        if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+      }
+
+    if (mtt_category_selected == 1)
+      {
+
+       
+
+
+        layerDefs[5] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+           
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [5];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         
+      }
+   else if (mtt_category_selected == 2)
+    {
+
+          layerDefs[4] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+           
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [4];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+        
+       
+
+    }
+  else if (mtt_category_selected == 3)
+    {
+
+          layerDefs[2] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+           
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [2];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+         
+
+         
+
+    }
+
+
+    if (MTTRasterLayer == null)
+         {
+          MTTRasterLayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          
+        }
+        else
+        {
+            map.removeLayer(MTTRasterLayer);
+            MTTRasterLayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          
+
+
+        }
+
+          map.addLayer(MTTRasterLayer);
+
+         
+
+          var ign_x = dom.byId("ign_point_input").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input").value.split(",")[1];
+           if (isNaN(ign_x == false))
+           {
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+         }
+ });
+
+
+on(dom.byId("mtt_archive_results_id"),"change", function() { 
+
+
+      var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+      var layerDefs = [];
+         
+
+      var description_selected = $("#ArchiveMTTResults_id option:selected" ).attr('value');
+
+      var description_selected_array = description_selected.split(',');
+      var description_selected_dateTime_init = description_selected_array[0];
+      var description_selected_date = description_selected_dateTime_init.split(" ")[0];
+      var description_selected_time_all = description_selected_dateTime_init.split(" ")[1];
+      var description_selected_hour = description_selected_time_all.split(":")[0];
+      var description_selected_min = description_selected_time_all.split(":")[1];
+
+      var description_selected_date = new Date(description_selected_date);
+      var description_selected_y = description_selected_date.getFullYear();
+      var  description_selected_day= description_selected_date.getDate();
+      var description_selected_month = description_selected_date.getMonth()+1;
+
+if (description_selected_hour<10)
+          description_selected_hour = parseInt(description_selected_hour, 10);
+
+      var description_selected_min = description_selected_time_all.split(":")[1];
+      if (description_selected_min<10)
+        description_selected_min = parseInt(description_selected_min, 10);
+
+   // var description_selected_hour = description_selected_date.getHours();
+    //var description_selected_min = description_selected_date.getMinutes();
+
+   // alert(description_selected_y);
+    //alert(description_selected_min);
+
+    var mtt_category_selected = parseInt($("#mtt_archive_results_id").prop('selectedIndex'));
+    if (mtt_category_selected == 0)
+      {
+
+        if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+          if (MajorPathslayer != null)
+                   {
+                    
+                      map.removeLayer(MajorPathslayer);
+                     
+
+
+                  }
+
+          if (MTTRasterLayer != null)
+                   {
+                    
+                      map.removeLayer(MTTRasterLayer);
+                  }
+
+
+      }
+
+    if (mtt_category_selected == 1)
+      {
+
+        layerDefs[5] = "User_ID ='"+user+"' AND Date =  '"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"'";
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [5];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         
+      }
+   else if (mtt_category_selected == 2)
+    {
+
+          layerDefs[4] = "User_ID ='"+user+"' AND Date =  '"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"'";
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [4];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+        
+       
+
+    }
+  else if (mtt_category_selected == 3)
+    {
+
+          layerDefs[2] = "User_ID ='"+user+"' AND Date =  '"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"'";
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [2];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+         
+
+         
+
+    }
+
+
+    if (MTTRasterLayer == null)
+         {
+          MTTRasterLayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          
+        }
+        else
+        {
+            map.removeLayer(MTTRasterLayer);
+            MTTRasterLayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          
+
+
+        }
+
+          map.addLayer(MTTRasterLayer);
+
+         
+
+          var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+         
+ });
+
+
+on(dom.byId("HideMajorPathsNew"),"click", function() { 
+
+
+
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (MajorPathslayer != null)
+         {
+          
+            map.removeLayer(MajorPathslayer);
+           
+
+
+        }
+
+
+});
+
+ on(dom.byId("ShowMajorPathsNew"),"click", function() { 
+
+
+
+
+ var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+
+      var selected_hour = window.hh;
+      if (selected_hour<10)
+          selected_hour = parseInt(selected_hour,10);
+
+        var selected_min = window.mm;
+        if (selected_min<10)
+            selected_min = parseInt(selected_min,10);
+    
+  
+
+
+      var layerDefs = [];
+
+     // alert("User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'");
+
+      layerDefs[0] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+          imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [0];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (MajorPathslayer == null)
+         {
+          MajorPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(MajorPathslayer);
+        }
+        else
+        {
+            map.removeLayer(MajorPathslayer);
+            MajorPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(MajorPathslayer);
+
+          
+        }
+
+
+
+
+        var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+           if (isNaN(ign_x == false))
+           {
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+         }
+});
+
+
+on(dom.byId("HideMajorPaths"),"click", function() { 
+
+
+
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (MajorPathslayer != null)
+         {
+          
+            map.removeLayer(MajorPathslayer);
+           
+
+
+        }
+
+
+});
+
+ on(dom.byId("ShowMajorPaths"),"click", function() { 
+
+
+ var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+
+
+      var description_selected = $("#ArchiveMTTResults_id option:selected" ).attr('value');
+
+      var description_selected_array = description_selected.split(',');
+      var description_selected_dateTime_init = description_selected_array[0];
+      var description_selected_date = description_selected_dateTime_init.split(" ")[0];
+      var description_selected_time_all = description_selected_dateTime_init.split(" ")[1];
+      var description_selected_hour = description_selected_time_all.split(':')[0];
+      var description_selected_min = description_selected_time_all.split(':')[1];
+
+      var description_selected_date = new Date(description_selected_date);
+      var description_selected_y = description_selected_date.getFullYear();
+      var  description_selected_day= description_selected_date.getDate();
+      var description_selected_month = description_selected_date.getMonth()+1;
+
+      if (description_selected_hour<10)
+          description_selected_hour = parseInt(description_selected_hour, 10);
+
+      var description_selected_min = description_selected_time_all.split(":")[1];
+      if (description_selected_min<10)
+          description_selected_min = parseInt(description_selected_min, 10);
+
+      var layerDefs = [];
+
+      layerDefs[0] = "User_ID ='"+user+"' AND Date =  '"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"'";
+
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [0];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (MajorPathslayer == null)
+         {
+          MajorPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(MajorPathslayer);
+        }
+        else
+        {
+            map.removeLayer(MajorPathslayer);
+            MajorPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(MajorPathslayer);
+
+          
+        }
+
+        var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+});
+
+
+on(dom.byId("HideFlowPaths"),"click", function() { 
+
+
+
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+
+});
+
+ on(dom.byId("ShowFlowPaths"),"click", function() { 
+
+
+ var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+      var layerDefs = [];
+
+      var description_selected = $("#ArchiveMTTResults_id option:selected" ).attr('value');
+
+      var description_selected_array = description_selected.split(',');
+      var description_selected_dateTime_init = description_selected_array[0];
+      var description_selected_date = description_selected_dateTime_init.split(" ")[0];
+      var description_selected_time_all = description_selected_dateTime_init.split(" ")[1];
+      var description_selected_hour = description_selected_time_all.split(':')[0];
+      var description_selected_min = description_selected_time_all.split(':')[1];
+
+      var description_selected_date = new Date(description_selected_date);
+      var description_selected_y = description_selected_date.getFullYear();
+      var  description_selected_day= description_selected_date.getDate();
+      var description_selected_month = description_selected_date.getMonth()+1;
+
+
+      if (description_selected_hour<10)
+          description_selected_hour = parseInt(description_selected_hour, 10);
+
+      var description_selected_min = description_selected_time_all.split(":")[1];
+      if (description_selected_min<10)
+        description_selected_min = parseInt(description_selected_min, 10);
+
+
+layerDefs[1] = "User_ID ='"+user+"' AND Date =  '"+description_selected_y+"_"+description_selected_month+"_"+description_selected_day+"_"+description_selected_hour+"_"+description_selected_min+"'";
+
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [1];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (FlowPathslayer == null)
+         {
+          FlowPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(FlowPathslayer);
+        }
+        else
+        {
+            map.removeLayer(FlowPathslayer);
+            FlowPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(FlowPathslayer);
+
+
+        }
+          var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+
+});
+
+
+on(dom.byId("HideFlowPathsNew"),"click", function() { 
+
+
+
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (FlowPathslayer != null)
+         {
+          
+            map.removeLayer(FlowPathslayer);
+           
+
+
+        }
+
+
+});
+
+ on(dom.byId("ShowFlowPathsNew"),"click", function() { 
+
+
+ var user = "user1";
+      var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+      var  day= d.getDate();
+      var month = d.getMonth()+1;
+      var y = d.getFullYear();
+      var imageParameters = new ImageParameters();
+      var layerDefs = [];
+
+     var selected_hour = window.hh;
+      if (selected_hour<10)
+          selected_hour = parseInt(selected_hour,10);
+
+        var selected_min = window.mm;
+        if (selected_min<10)
+            selected_min = parseInt(selected_min,10);
+
+
+layerDefs[1] = "User_ID ='"+user+"' AND Date =  '"+y+"_"+month+"_"+day+"_"+selected_hour+"_"+selected_min+"'";
+
+           imageParameters.layerDefinitions = layerDefs;
+
+          //I want layers 5,4, and 3 to be visible
+          imageParameters.layerIds = [1];
+          imageParameters.layerOption = ImageParameters.LAYER_OPTION_SHOW;
+          imageParameters.transparent = true;
+
+          //construct ArcGISDynamicMapServiceLayer with imageParameters from above
+         if (FlowPathslayer == null)
+         {
+          FlowPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(FlowPathslayer);
+        }
+        else
+        {
+            map.removeLayer(FlowPathslayer);
+            FlowPathslayer = new ArcGISDynamicMapServiceLayer("http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/FIRES_VISUAL_LSV/MapServer",
+            {"imageParameters": imageParameters});
+
+          map.addLayer(FlowPathslayer);
+
+
+        }
+          var ign_x = dom.byId("ign_point_input_archive").value.split(",")[0];
+           var ign_y = dom.byId("ign_point_input_archive").value.split(",")[1];
+
+           if (isNaN(ign_x == false))
+           {
+           var pt = new Point(ign_x, ign_y);
+          map.centerAndZoom(pt, 16);
+         }
+
+           
+
+});
+
+
+function getArchiveMTT() {
+    
+var user = "user1";
+var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+var  day= d.getDate();
+var month = d.getMonth()+1;
+var y = d.getFullYear();
+
+//alert(window.mm);
+$.ajax({
+    type: "GET",
+    dataType: 'text',
+    url: "http://195.251.137.12/AppFolder/getDescriptions.php",
+    data:{user:"user1"},
+    user: "user1",
+    crossDomain : true
+    
+
+
+
+
+})
+    .done(function( data ) {
+        //alert("FINITO");
+        //alert("descr:"+data);
+      all_descriptions = data;
+
+      var str_array = data.split('|');
+
+
+var option0 = document.createElement("option");
+   option0.id = "ArchiveMTTResults_id_0";
+  option0.value = "-1";
+  option0.innerHTML = "Select one of the available previous simulation";
+  ArchiveMTTResults_id.appendChild(option0);
+
+
+for(var i = 0; i < str_array.length; i++) 
+  {
+   // Trim the excess whitespace.
+   str_array[i] = str_array[i].replace(/^\s*/, "").replace(/\s*$/, "");
+ if (str_array[i].length>0)
+    {
+    var line_array = str_array[i].split(',');
+   
+      var  option = document.createElement("option");
+      option.id = line_array[0];
+      option.value = line_array[1]+","+line_array[3]+","+line_array[4]+","+line_array[5]+","+line_array[6]+","+line_array[7]+","+line_array[8]+","+line_array[9];
+      option.innerHTML = line_array[2] +","+line_array[1];
+      ArchiveMTTResults_id.appendChild(option);
+    }
+  }
+
+    })
+    .fail( function(xhr, textStatus, errorThrown) {
+        alert(xhr.responseText);
+        alert(textStatus);
+    });
+
+}
+
+
+
+
+     function GetReal_wd_requestSucceeded(response, io){
+          
+         var res = response.wind.deg;
+          //dom.byId("content").innerHTML = response.wind.deg;
+         // dom.byId("ws_input").value = res;
+         res = parseFloat(res).toFixed(0);
+          document.getElementById("wd_input").value = res;
+          //document.getElementById("compassimg").rotate(res);
+          var angleInt = parseInt(res);
+          $("#compassimg").rotate(angleInt);
+        }
+        
+        function GetReal_wd_requestFailed(error, io){
+
+          
+          document.getElementById("content").value = error;
+
+        }   
+        
+
+function guid() 
+{
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  }
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
+
+function check_condition() {
+    
+var user = "user1";
+var d = new Date();
+        //var hh = d.getHours();
+ //mm = d.getMinutes();
+var  day= d.getDate();
+var month = d.getMonth()+1;
+var y = d.getFullYear();
+
+//alert(window.mm);
+var file_to_check = "http://195.251.137.10/mttresults/mtt_v2/"+user+"/"+user+"_"+y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm+"_CROWNSTATE.asc";
+//alert(file_to_check);
+$.ajax({
+    type: "GET",
+    dataType: 'text',
+    url: "http://195.251.137.12/AppFolder/check_file.php",
+    data:{file:file_to_check},
+    file: file_to_check,
+    crossDomain : true
+    
+})
+    .done(function( data ) {
+        //alert("FINITO");
+        if (data.indexOf("FAILED")>=0)
+          setTimeout(check_condition, 5000);
+        else
+          {
+
+            //alert("SIMULATION FINISHED SUCCESSFULY. WAITING FOR VISUALIZATION");
+            
+            GP_ignition_point_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+            GP_arrival_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+            GP_major_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+            GP_ROS_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+            GP_FLI_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+            GP_FLOW_method(user, y+"_"+month+"_"+day+"_"+window.hh+"_"+window.mm);
+
+
+      }
+    })
+    .fail( function(xhr, textStatus, errorThrown) {
+        alert(xhr.responseText);
+        alert(textStatus);
+    });
+
+}
+
+
+function requestSucceeded_descr(response, io)
+{
+          
+
+         
+          
+          //dom.byId("content").value = response;
+}
+      
+function requestFailed_descr(error, io){
+
+          alert("error"+error);
+          
+
+        }
+
+
+function requestSucceeded(response, io){
+          
+
+      check_condition();
+
+          //alert(response);
+          
+          //dom.byId("content").value = response;
+        }
+        function requestFailed(error, io){
+
+          alert("error"+error);
+          dom.byId("content").value = error;
+
+        }
+
+
+
+function GetReal_ws_requestSucceeded(response, io){
+          
+         var res = response.wind.speed;
+          //dom.byId("content").innerHTML = response.wind.deg;
+         // dom.byId("ws_input").value = res;
+         res = parseFloat(res).toFixed(0);
+          document.getElementById("ws_input").value = res;
+
+        }
+        
+        function GetReal_ws_requestFailed(error, io){
+
+          
+          document.getElementById("content").value = error;
+
+        }
+
+        
+    });
+
+
+
+
+
+
+  </script>   
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+     <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Fire WebGIS</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+           <!-- <li class="active"><a href="#">Home</a>
+-->
+            <li class="active dropdown" id="basemapList">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Basemaps <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+
+
+<li><a id="btnHybrid"><input  type="radio"  id="btnHybrid_checkbox" name="bing" checked
+    >
+<label for="Streetslayer_lbl">Hybrid</label></a>
+
+                <!--<li><a id="btnStreets" href="#">Streets</a></li>-->
+ <li><a id="btnStreets"><input type="radio" id="btnStreets_checkbox" name="bing"
+   >
+<label for="Streetslayer_lbl">Streets</label></a>
+
+                <!--<li><a id="btnSatellite"  href="#">Imagery</a></li>-->
+                <li><a id="btnImagery"><input type="radio" id="btnImagery_checkbox" name="bing"
+    >
+<label for="Imagerylayer_lbl">Imagery</label></a>
+<li><a id="btnNatGeo"><input type="radio" id="btnNationalGeographic_checkbox" name="bing"
+    >
+<label for="NationalGeographiclayer_lbl">National Geographic</label></a>
+
+<li><a id="btnTopo"><input type="radio" id="btnTopographic_checkbox" name="bing"
+    >
+<label for="Topographiclayer_lbl">Topographic</label></a>
+
+<!--
+                <li><a id="btnNatGeo" href="#">National Geographic</a></li>
+                <li><a id="btnTopo" href="#">Topographic</a></li>
+                <li><a id="btnGray"href="#">Gray</a></li>
+              -->
+                
+
+                 <li class="divider"></li>
+                
+                 <li><a id="BingMap_roads" href="#"><input type="radio" id="BingMaps_roads_Typescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl2">Bing Maps (roads)</label></a>
+
+                 <li><a id="BingMap_aerial" href="#"><input type="radio" id="BingMaps_aerial_Typescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl1">Bing Maps (aerial)</label></a>
+
+                 </li>
+
+                
+
+                 </li>
+
+                 <li><a id="BingMap_aerial_label" href="#"><input type="radio" id="BingMaps_aerial_label_Typescheckbox" name="bing"
+   >
+<label for="CoverTypescheckboxlbl3">Bing Maps (aerial with label)</label></a>
+
+                 </li>
+               
+                
+                <li class="divider"></li>
+                 <li><a id="CoverTypes_id" href="#"><input type="radio" id="CoverTypescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl">Cover Types</label></a>
+
+                 </li>
+
+                <li class="divider"></li>
+                 <li><a id="OpenStreetMap_id" href="#"><input type="radio" id="OSM_checkbox" name="bing"
+    >
+<label for="OSM_lbl">Open Street Map</label></a>
+
+                 </li>
+
+              </ul>
+            </li>
+
+
+
+
+<li class="active dropdown" id="FireManagementListid">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire Management <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                 <li><a id="pumpingStationsId" href="#"><img src="images/pumpStations.png">Pumping Stations</a></li>
+                <li><a id="fireHydrantsId" href="#"><img src="images/hydrants.png">Fire Hydrants</a></li> 
+                 <li><a id="waterTanksId" href="#"><img src="images/watertanks.png">Water Tanks</a></li>
+                <li><a id="clearAllFireMgmtId" href="#">Clear Fire Management Data</a></li>
+              </ul>
+            </li>
+
+
+<li class="active dropdown" id="FireHistoryid">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire History <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="FireHistoryIgnPointsId" href="#">Ignition Points</a></li>
+                <li><a id="FirePerimetersId" href="#">Fire Perimeter</a></li> 
+                <li><a id="FireHistoryIgnPointsId_Clear" >Clear</a></li>
+               
+              </ul>
+            </li>
+
+
+<!--
+                <li class="active dropdown" ><a id="FireDangerId" href="#">Fire Danger</a></li>
+    -->           
+               
+              
+
+
+
+
+ 
+
+      
+<li class="active dropdown" id="basemapList">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire Behavior Modelling<b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="MTT_id" href="#">New Simulation</a></li>
+                <li><a id="MTT_archive_id" href="#">Previous Simulations</a></li>
+                <li><a id="MTT_showResults" href="#">Simulation Outputs</a></li>          
+              </ul>
+            </li>
+
+<li class="active dropdown" id="ToolsId">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="ClosestPumpsId" href="#"><img src="images/pumpStations.png">Closest Pumbing Stations</a></li>
+                <li><a id="ClosestDexId" href="#"><img src="images/hydrants.png">Closest Fire Hydrants</a></li>
+                <li><a id="ClosestHydrantsId" href="#"><img src="images/watertanks.png">Closest Water Tanks</a></li>
+                <li><a id="Tools_Clear" >Clear Closest Routes</a></li>
+                 <li class="divider"></li>
+                 <li><a id="AreaDistanceId" href="#">Area & Distance Measurement</a></li>
+                <li><a id="btnshowPos" href="#">Show current Position</a></li>
+                <li><a id="btnhidePos" href="#">Hide current Position</a></li>          
+              </ul>
+            </li>
+
+            
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+   <!-- <div class="panel panel-primary panel-fixed">
+      <div class="panel-heading">
+        <h3 class="panel-title">Basemaps</h3>
+      </div>
+      <div class="panel-body">
+        <div class="btn-toolbar">
+          <div class="btn-group">
+            <button id="btnStreets" class="btn btn-default">Streets</button>
+            <button id="btnSatellite" class="btn btn-default">Satellite</button>
+            <button id="btnHybrid" class="btn btn-default">Hybrid</button>
+            <button id="btnTopo" class="btn btn-default">Topo</button>
+          </div>  
+        </div>
+        <div class="btn-toolbar">
+          <div class="btn-group">
+            <button id="btnGray" class="btn btn-default">Gray</button>
+            <button id="btnNatGeo" class="btn btn-default">National Geographic</button>
+          </div>  
+        </div>
+      </div>
+    </div> -->
+
+
+<div class="modal fade" id="waiting_resultsModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Waiting for results</h4>
+                </div>
+                <div class="modal-body">
+                <div id="waiting_results">
+                        <img   src="images/waiting.gif"  alt="Waiting for the results" >
+                        
+                  </div>
+               
+                </div>
+            </div>
+        </div>
+</div>
+
+
+
+
+
+<div class="modal fade" id="ClosestModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="ModalClosest" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Your location</h4>
+                </div>
+                <div class="modal-body">                    
+
+                        <label >Specify coordinates</label>
+                          <div>   <input type = "text" style="width: 140px" value="longitude,latitude" class = "form-control"  id = "ign_point_input_closest" placeholder = "Ignition Point">
+                            <a  id="current_ignpoint_closest_id">In current location</a> &nbsp;/&nbsp;<a  id="map_ignpoint_closest_id">Click on the map</a> 
+                          </div>
+                          <button id="GP_Closesest_Dex_btn" type="submit" class="btn btn-default" data-dismiss="modal">Find Closest Route</button>
+                </div>
+             </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+  </div>
+
+
+
+<div class="modal fade" id="showMTTOutputsModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">MTT Outputs</h4>
+                </div>
+                <div class="modal-body">
+                    
+              </div>
+            </div>
+        </div>
+</div>
+
+
+
+<div class="modal fade" id="showArchiveMTTModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="showArchiveMTTModalClose" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Archive Simulation</h4>
+                </div>
+                <div class="modal-body">
+                  <label >Select simulation from the archive</label>
+                  <div id="ArchiveMTTResults">
+                        
+                                                    <select class = "form-control" id="ArchiveMTTResults_id">
+                                                       
+                                                      
+                                                    </select>
+                  </div>
+
+
+                      <label >Ignition point</label>
+                          <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ign_point_input_archive" placeholder = "Ignition Point" readonly>
+                          </div>
+                    <hr>
+
+
+                        <label >Fuel Moisture</label>
+                            <select class = "form-control" id="fuel_cat_id_archive" readonly>
+                              <option value="0">Fuel moisture from the closest RAWS</option>
+                              <option value="1">D1L1 - Very low dead, fully cured herb (3,4,5,30,60)</option>
+                              <option value="2">D1L2 - Very low dead, 2/3 cured herb (3,4,5,60,90)</option>
+                              <option value="3">D1L3 - Very low dead, 1/3 cured herb (3,4,5,90,120)</option>
+                              <option value="4">D1L4 - Very low dead, fully green herb (3,4,5,120,150)</option>
+                              <option value="5">D2L1 - Low dead, fully cured herb (6,7,8,30,60)</option>
+                              <option value="6">D2L2 - Low dead, 2/3 cured herb (6,7,8,60,90)</option>
+                              <option value="7">D2L3 - Low dead, 1/3 cured herb (6,7,8,90,120)</option>
+                              <option value="8">D2L4 - Low dead, fully green herb (6,7,8,120,150)</option>
+                              <option value="9">D3L1 - Moderate dead, fully cured herb (9,10,11,30,60)</option>
+                              <option value="10">D3L2 - Moderate dead, 2/3 cured herb (9,10,11,60,90)</option>
+                              <option value="11">D3L3 - Moderate dead, 1/3 cured herb (9,10,11,90,120)</option>
+                              <option value="12">D3L4 - Moderate dead, fully green herb (9,10,11,120,150)</option>
+                              <option value="13">D4L1 - High dead, fully cured herb (12,13,14,30,60)</option>
+                              <option value="14">D4L2 - High dead, 2/3 cured herb (12,13,14,60,90)</option>
+                               <option>D4L3 - High dead, 1/3 cured herb (12,13,14,90,120)</option>
+                               <option>D4L4 - High dead, fully green herb (12,13,14,120,150)</option>
+
+                            </select>
+                        <label >Simulation time (hours)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_archive" placeholder = "simulation time (hours)" readonly>
+                 </div>
+                    <hr>
+
+<label >Simulation time (minutes)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_min_archive" placeholder = "simulation time (minutes)" readonly></div>
+                    <hr>
+
+
+<label >Wind Speed</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ws_input_archive" placeholder = "Wind speed (m/sec)" readonly>
+                 </div>
+                    <hr>
+
+<label >Wind Direction</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "wd_input_archive" placeholder = "Wind direction (degrees)" readonly>
+                 </div>
+                    
+
+                    <!-- <input type = "text" class = "form-control" id = "wind_direction" placeholder = "Wind Direction">
+                     
+<p><div id="slider" ></div><input type="text" id="sliderValue" data-dojo-type="dijit/form/TextBox" /></p>
+-->
+                    <div class="bigdiv"><img id="compassimg_archive"  src="images/wind_arrow.png"  alt="Wind Direction">
+                    </div>
+                    <hr/>
+
+                  <label >Show Outputs</label>
+                         <div id="combo_results">
+                        
+                                                    <select class = "form-control" id="mtt_archive_results_id">
+                                                       <option value="0">Select Map</option>
+                                                      <option value="1">Arrival Time</option>
+                                                      <option value="2">Fire Line Intensity</option>
+                                                      <option value="3">Rate of Spread</option>
+                                                      
+                                                    </select>
+                          </div>
+                 <div><a  id="ShowMajorPaths">Show</a> / <a  id="HideMajorPaths">Hide</a>Major Paths</div>
+               
+
+
+                  
+
+                  <div> <a  id="ShowFlowPaths">Show</a> / <a  id="HideFlowPaths">Hide</a>Flow Paths</div>
+                  <hr/>
+                  <label >Download Outputs</label>
+                  <div>
+                    <a  id="downloadResults_id"><img   src="images/download_zip.png"  width="100" alt="Download Results" ></img></a>
+                  </div>
+                  <hr/>
+                  <button id="ArhiveMTTbtnHide" type="submit" class="btn btn-default" data-dismiss="modal">Show Map</button>
+                  <button type="button" id="showArchiveMTTModalClose2"  class="btn btn-default" data-dismiss="modal" aria-hidden="true">Clear Results</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+</div>
+
+
+ <div class="modal fade" id="geosearchModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="geosearchModalClose" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">New Fire Behavior Simulation</h4>
+                </div>
+                <div class="modal-body">
+                    
+
+
+                  <form id="geosearch-form">
+                    <div class="form-group">
+                      <div id="geosearch"></div>
+
+
+                        <label >Ignition point</label>
+                          <div>   <input type = "text" style="width: 140px" value="longitude,latitude" class = "form-control"  id = "ign_point_input" placeholder = "Ignition Point">
+                            <a  id="current_ignpoint_id">Coordinates retrieved from GPS</a> &nbsp;/&nbsp;<a  id="map_ignpoint_id">Click on the map to specify coordinates</a> 
+                          </div>
+                    <hr>
+
+
+                        <label >Fuel Moisture</label>
+                            <select class = "form-control" id="fuel_cat_id">
+                              <option value="0">Fuel moisture from the closest RAWS</option>
+                              <option value="1">D1L1 - Very low dead, fully cured herb (3,4,5,30,60)</option>
+                              <option value="2">D1L2 - Very low dead, 2/3 cured herb (3,4,5,60,90)</option>
+                              <option value="3">D1L3 - Very low dead, 1/3 cured herb (3,4,5,90,120)</option>
+                              <option value="4">D1L4 - Very low dead, fully green herb (3,4,5,120,150)</option>
+                              <option value="5">D2L1 - Low dead, fully cured herb (6,7,8,30,60)</option>
+                              <option value="6">D2L2 - Low dead, 2/3 cured herb (6,7,8,60,90)</option>
+                              <option value="7">D2L3 - Low dead, 1/3 cured herb (6,7,8,90,120)</option>
+                              <option value="8">D2L4 - Low dead, fully green herb (6,7,8,120,150)</option>
+                              <option value="9">D3L1 - Moderate dead, fully cured herb (9,10,11,30,60)</option>
+                              <option value="10">D3L2 - Moderate dead, 2/3 cured herb (9,10,11,60,90)</option>
+                              <option value="11">D3L3 - Moderate dead, 1/3 cured herb (9,10,11,90,120)</option>
+                              <option value="12">D3L4 - Moderate dead, fully green herb (9,10,11,120,150)</option>
+                              <option value="13">D4L1 - High dead, fully cured herb (12,13,14,30,60)</option>
+                              <option value="14">D4L2 - High dead, 2/3 cured herb (12,13,14,60,90)</option>
+                             <option>D4L3 - High dead, 1/3 cured herb (12,13,14,90,120)</option>
+                             <option>D4L4 - High dead, fully green herb (12,13,14,120,150)</option>
+
+                            </select>
+                        <label >Simulation time (hours)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time" placeholder = "Specify simulation time (hours)"><a  id="increase_sim_id"><img   src="images/plus.png" width="45" height="45" alt="Increase (hours)" ></a> &nbsp;&nbsp;<a  id="decrease_sim_id"><img   src="images/minus.png"  width="45" height="45" alt="Decrease (hours)" ></a></div>
+                    <hr>
+
+<label >Simulation time (minutes)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_min" placeholder = "Specify simulation time (minutes)"><a  id="increase_sim_id_min"><img   src="images/plus.png" width="45" height="45" alt="Increase (minutes)" ></a> &nbsp;&nbsp;<a  id="decrease_sim_id_min"><img  src="images/minus.png"  width="45" height="45" alt="Decrease (minutes)" ></a></div>
+                    <hr>
+
+
+<label >Wind Speed</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ws_input" placeholder = "Specify wind speed (m/sec)"><a  id="increase_ws"><img   src="images/plus.png" width="45" height="45" alt="Increase wind speed" ></a> &nbsp;&nbsp;<a  id="decrease_ws"><img  src="images/minus.png"  width="45" height="45" alt="Decrease wind speed"></a>&nbsp;&nbsp;<a  id="GetReal_ws_id">Wind Speed from current location</a>
+                 </div>
+                    <hr>
+
+<label >Wind Direction</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "wd_input" placeholder = "Specify wind direction (degrees)"><a  id="increase_wd"><img   src="images/plus.png" width="45" height="45" alt="Increase wind direction" ></a> &nbsp;&nbsp;<a  id="decrease_wd"><img  src="images/minus.png"  width="45" height="45" alt="Decrease wind direction"></a>&nbsp;&nbsp;<a  id="GetReal_wd_id">Wind Direction from current location</a>
+                 </div>
+                    
+
+                    <!-- <input type = "text" class = "form-control" id = "wind_direction" placeholder = "Wind Direction">
+                     
+<p><div id="slider" ></div><input type="text" id="sliderValue" data-dojo-type="dijit/form/TextBox" /></p>
+-->
+                    <div class="bigdiv"><img id="compassimg"  src="images/wind_arrow.png"  alt="Wind Direction" >
+                    </div>
+
+                  </div> 
+                    <button id="StartMTTbtn" type="button" class="btn btn-success" data-dismiss="modal"> Start Simulation </button>
+                    <hr/>
+                    <div id="showMTTResults">
+                       <label >Show Outputs</label>
+                         <div id="combo_results">
+                        
+                                                    <select class = "form-control" id="mtt_results_id">
+                                                       <option value="0">Select Map</option>
+                                                      <option value="1">Arrival Time</option>
+                                                      <option value="2">Fire Line Intensity</option>
+                                                      <option value="3">Rate of Spread</option>
+                                                      
+                                                    </select>
+                          </div>
+                 <div><a  id="ShowMajorPathsNew">Show</a> / <a  id="HideMajorPathsNew">Hide</a>Major Paths</div>
+               
+
+
+                  
+
+                  <div> <a  id="ShowFlowPathsNew">Show</a> / <a  id="HideFlowPathsNew">Hide</a>Flow Paths</div>
+                  </div>
+
+                    <div class="checkbox">
+    
+  </div>
+
+                    <button id="StartMTTbtnHide" type="submit" class="btn btn-default" data-dismiss="modal">Show Map</button>
+                    <button type="button" id="StartMTTbtnHide2"  class="btn btn-default" data-dismiss="modal" aria-hidden="true">Clear Results</button>
+                  </form>
+                  
+
+
+                 
+               
+
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+     
+    <div id="mapDiv">
+<div id="bottomPanel">
+        <div id="timeInfo">
+          <div></div>
+          <div id="timeSliderDiv"></div>
+        </div>
+      </div>
+    </div>
+        
+          
+   <div id="legendDiv">
+    
+  </div>
+
+  <div id="measurementDiv"></div>
+            
+          </div>
+
+
+<script type="text/javascript" src="Datejs-all/test/scripts/firebug/firebug.js"></script>
+    
+    <script type='text/javascript' src='Datejs-all/test/scripts/jquery-1.2.1.pack.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/cruiser.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/enumerable.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/specifications.js'></script>
+   
+    
+    <!-- Datejs -->    
+    <script type='text/javascript' src='Datejs-all/src/globalization/en-US.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/core-debug.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/sugarpak-debug.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/parser-debug.js'></script>
+
+
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="js/jQueryRotate.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height, target-densitydpi=device-dpi" />
+        <link rel="stylesheet" type="text/css" href="css/index.css" />
+    
+
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Fire WebGIS</title>
+
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="http://getbootstrap.com/examples/starter-template/starter-template.css" rel="stylesheet">
+<link rel="stylesheet" href="https://js.arcgis.com/3.15/esri/css/esri.css">
+<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+  
+<link rel="stylesheet" href="https://esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
+
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/dojo/1.10.4/dijit/themes/claro/claro.css">
+  <style>
+    html, body, #mapDiv {
+      height: 100%;
+      width: 100%;
+
+
+    }
+
+
+
+
+.bigdiv {
+   /*width:100%;
+   height:100%;
+   position:absolute;
+   */
+   background-image: url(images/wind_circle.png);
+   background-repeat:no-repeat;
+
+}
+.bigdiv img {
+   /*position:absolute;
+   left:50%;
+   top:50%;
+   */
+   margin-left:65px;
+   margin-top:25px;
+    margin-bottom:5px;
+}
+
+
+
+ /* Change color of icons to match bar chart and selection symbol */
+      .esriPopup.dark div.titleButton, 
+      .esriPopup.dark div.titlePane .title,
+      .esriPopup.dark div.actionsPane .action {
+        color: #000000;
+      }
+      /* Additional customizations */
+      .esriPopup.dark .esriPopupWrapper {
+        border: none;
+      }
+      .esriPopup .contentPane {
+        text-align: center;
+      }
+      .esriViewPopup .gallery {
+        margin: 0 auto;
+      }
+
+
+      #bottomPanel {
+        left: 50%;
+        margin: 0 auto;
+        margin-left: -500px;
+        position: absolute; 
+        bottom: 2.5em;
+      }
+
+      #timeInfo{
+        border-radius: 4px;
+        border: solid 2px #ccc;
+        background-color: #fff;
+        display: block;
+        padding: 5px;
+        position: relative;
+        text-align: center;
+        width: 1000px;
+        z-index: 99;
+      }
+
+  </style>
+ 
+
+
+<!-- ArcGIS API for JavaScript library references -->
+  <script src="https://js.arcgis.com/3.15compact"></script>
+  <script>
+    require(["esri/map", "dojo/keys",  "esri/sniff",  "esri/tasks/GeometryService",
+      "esri/dijit/Popup", "esri/dijit/PopupTemplate",
+      "esri/dijit/Legend", "dojo/_base/array",
+
+     "esri/virtualearth/VETiledLayer",
+     "esri/layers/OpenStreetMapLayer",
+     "esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/TimeExtent", "esri/dijit/TimeSlider",
+     "esri/layers/ImageParameters",
+     "esri/layers/FeatureLayer", 
+      "esri/symbols/SimpleFillSymbol","esri/Color",
+      "esri/SpatialReference", 
+      "esri/geometry/Point", 
+       "esri/geometry/Extent",
+       "esri/tasks/FeatureSet",
+       "esri/symbols/PictureMarkerSymbol",
+      "esri/symbols/SimpleMarkerSymbol", "esri/symbols/SimpleLineSymbol", "esri/Color", "esri/graphic",
+      "esri/graphicsUtils",
+      "esri/domUtils",
+      "dojo/parser",
+
+      "dojo/dom-class", "dojo/dom-construct", 
+      "dojo/on", 
+
+      "dojo/dom", 
+
+// parser because of TextBox decoration
+    "dijit/form/HorizontalSlider",
+    "dijit/form/TextBox",
+    "dijit/form/CheckBox",
+    "esri/geometry/webMercatorUtils",
+    "esri/tasks/Geoprocessor",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+      "dojo/dom-class", "dojo/_base/json", "esri/config", "esri/request",
+      "dojo/domReady!"], 
+      function(Map, keys, has,  GeometryService, Popup, PopupTemplate,Legend, arrayUtils, VETiledLayer, OpenStreetMapLayer, ArcGISDynamicMapServiceLayer, 
+        TimeExtent, TimeSlider,
+        ImageParameters, FeatureLayer, SimpleFillSymbol, Color,SpatialReference, Point, Extent, FeatureSet,SimpleMarkerSymbol, PictureMarkerSymbol, SimpleLineSymbol, Color, Graphic, graphicsUtils, domUtils, parser, domClass, domConstruct, on, dom, HorizontalSlider, TextBox, CheckBox, webMercatorUtils, Geoprocessor,  ArcGISTiledMapServiceLayer, domClass, dojoJson, esriConfig, esriRequest) {
+
+        var showLocationgraphic;
+        var showTruckLocationgraphic;
+        var setignPointOnMap = 0;
+        var setignPointOnMapClosest = 0;
+
+        var gpServiceUrl= "http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MTT_GDB_IGN_LSV/GPServer/MTT_GDB_IGNITION_SHP";
+
+        var gpServiceUrl_arrival= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/MTT_GDB_TOA_LSV/GPServer/MTT_GDB_ARRIVAL_SHP";
+
+        var gpServiceUrl_MAJOR= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/MTT_FIRES/MAJORPATHS_LSV/GPServer/toshpMAJOR242014";
+        var gpServiceUrl_FLOW= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/MTT_FIRES/FLOWPATH_LSV/GPServer/toshp2_5_2015";
+        var gpServiceUrl_ROS= "http://195.251.137.10:6080/arcgis/rest/services/LESVOS/MTT_ROS_VECT_LSV/GPServer/MTT_GDB_ROS_SHP";
+        var gpServiceUrl_FLI= "http://aegisvm1.aegean.gr:6080/arcgis/rest/services/LESVOS/MTT_GDB_FIRELINE_LSV/GPServer/MTT_GDB_FIRELINE_SHP";
+
+
+          var gpServiceUrl_CloDex="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestDexamenes_LSV/GPServer/Find_Nearby_DEXAMENES";
+
+
+          var gpServiceUrl_CloHydrants="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestKROUNOI_LSV/GPServer/Find_Nearby_KROUNOI";
+
+          var gpServiceUrl_CloPumbs="http://195.251.137.10:6080/arcgis/rest/services/LESVOS/CalcClosestWATER_LSV/GPServer/Find_Nearby_WATER";
+            
+
+          var closestFacilitySelected = 0;
+
+         parser.parse();
+
+
+        dojo.require("esri.virtualearth.VETiledLayer");
+        dojo.require("dijit.form.Button");
+
+      var veTileLayer;
+      var openStreetMapLayer;
+      var CoverTypeslayer;
+      var MajorPathslayer;
+      var FlowPathslayer;
+      var ROSlayer;
+      var FLIlayer;
+      var ArrivalTimelayer;
+      var MTTRasterLayer;
+      var pumpingStationsLayer;
+      var waterTanksLayer;
+      var fireHydrantsLayer;
+      var legend;
+      var mm;
+      var hh;
+      var id_val;
+      var all_descriptions;
+      var featuresClosest;
+        var AreaDistanceShowHide = "hide";
+        //var measurement;
+
+ 
+
+        //Add the dark theme which is customized further in the <style> tag at the top of this page
+       
+        // Create map
+      var map = new Map("mapDiv",
+        { 
+          basemap: "hybrid",
+          center: [26.273, 39.199],
+          sliderPosition: "top-right",
+          
+      zoom: 11
+        });
+
+
+      
+
+
+
+
+      esriConfig.defaults.io.proxyUrl = "/sproxy/proxy.ashx";
+        // Wire UI Events
+
+
+
+           
+
+
+
+        
+    });
+
+
+
+
+
+
+  </script>   
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+        <script type="text/javascript">
+            app.initialize();
+        </script>
+
+
+     <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Fire WebGIS</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+           <!-- <li class="active"><a href="#">Home</a>
+-->
+            <li class="active dropdown" id="basemapList">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Basemaps <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+
+
+<li><a id="btnHybrid"><input  type="radio"  id="btnHybrid_checkbox" name="bing" checked
+    >
+<label for="Streetslayer_lbl">Hybrid</label></a>
+
+                <!--<li><a id="btnStreets" href="#">Streets</a></li>-->
+ <li><a id="btnStreets"><input type="radio" id="btnStreets_checkbox" name="bing"
+   >
+<label for="Streetslayer_lbl">Streets</label></a>
+
+                <!--<li><a id="btnSatellite"  href="#">Imagery</a></li>-->
+                <li><a id="btnImagery"><input type="radio" id="btnImagery_checkbox" name="bing"
+    >
+<label for="Imagerylayer_lbl">Imagery</label></a>
+<li><a id="btnNatGeo"><input type="radio" id="btnNationalGeographic_checkbox" name="bing"
+    >
+<label for="NationalGeographiclayer_lbl">National Geographic</label></a>
+
+<li><a id="btnTopo"><input type="radio" id="btnTopographic_checkbox" name="bing"
+    >
+<label for="Topographiclayer_lbl">Topographic</label></a>
+
+<!--
+                <li><a id="btnNatGeo" href="#">National Geographic</a></li>
+                <li><a id="btnTopo" href="#">Topographic</a></li>
+                <li><a id="btnGray"href="#">Gray</a></li>
+              -->
+                
+
+                 <li class="divider"></li>
+                
+                 <li><a id="BingMap_roads" href="#"><input type="radio" id="BingMaps_roads_Typescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl2">Bing Maps (roads)</label></a>
+
+                 <li><a id="BingMap_aerial" href="#"><input type="radio" id="BingMaps_aerial_Typescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl1">Bing Maps (aerial)</label></a>
+
+                 </li>
+
+                
+
+                 </li>
+
+                 <li><a id="BingMap_aerial_label" href="#"><input type="radio" id="BingMaps_aerial_label_Typescheckbox" name="bing"
+   >
+<label for="CoverTypescheckboxlbl3">Bing Maps (aerial with label)</label></a>
+
+                 </li>
+               
+                
+                <li class="divider"></li>
+                 <li><a id="CoverTypes_id" href="#"><input type="radio" id="CoverTypescheckbox" name="bing"
+    >
+<label for="CoverTypescheckboxlbl">Cover Types</label></a>
+
+                 </li>
+
+                <li class="divider"></li>
+                 <li><a id="OpenStreetMap_id" href="#"><input type="radio" id="OSM_checkbox" name="bing"
+    >
+<label for="OSM_lbl">Open Street Map</label></a>
+
+                 </li>
+
+              </ul>
+            </li>
+
+
+
+
+<li class="active dropdown" id="FireManagementListid">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire Management <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                 <li><a id="pumpingStationsId" href="#"><img src="images/pumpStations.png">Pumping Stations</a></li>
+                <li><a id="fireHydrantsId" href="#"><img src="images/hydrants.png">Fire Hydrants</a></li> 
+                 <li><a id="waterTanksId" href="#"><img src="images/watertanks.png">Water Tanks</a></li>
+                <li><a id="clearAllFireMgmtId" href="#">Clear Fire Management Data</a></li>
+              </ul>
+            </li>
+
+
+<li class="active dropdown" id="FireHistoryid">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire History <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="FireHistoryIgnPointsId" href="#">Ignition Points</a></li>
+                <li><a id="FirePerimetersId" href="#">Fire Perimeter</a></li> 
+                <li><a id="FireHistoryIgnPointsId_Clear" >Clear</a></li>
+               
+              </ul>
+            </li>
+
+
+<!--
+                <li class="active dropdown" ><a id="FireDangerId" href="#">Fire Danger</a></li>
+    -->           
+               
+              
+
+
+
+
+ 
+
+      
+<li class="active dropdown" id="basemapList">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Fire Behavior Modelling<b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="MTT_id" href="#">New Simulation</a></li>
+                <li><a id="MTT_archive_id" href="#">Previous Simulations</a></li>
+                <li><a id="MTT_showResults" href="#">Simulation Outputs</a></li>          
+              </ul>
+            </li>
+
+<li class="active dropdown" id="ToolsId">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tools <b class="caret"></b></a>
+              <ul class="dropdown-menu" id="basemapsDropdown">
+                <li><a id="ClosestPumpsId" href="#"><img src="images/pumpStations.png">Closest Pumbing Stations</a></li>
+                <li><a id="ClosestDexId" href="#"><img src="images/hydrants.png">Closest Fire Hydrants</a></li>
+                <li><a id="ClosestHydrantsId" href="#"><img src="images/watertanks.png">Closest Water Tanks</a></li>
+                <li><a id="Tools_Clear" >Clear Closest Routes</a></li>
+                 <li class="divider"></li>
+                 <li><a id="AreaDistanceId" href="#">Area & Distance Measurement</a></li>
+                <li><a id="btnshowPos" href="#">Show current Position</a></li>
+                <li><a id="btnhidePos" href="#">Hide current Position</a></li>          
+              </ul>
+            </li>
+
+            
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+   <!-- <div class="panel panel-primary panel-fixed">
+      <div class="panel-heading">
+        <h3 class="panel-title">Basemaps</h3>
+      </div>
+      <div class="panel-body">
+        <div class="btn-toolbar">
+          <div class="btn-group">
+            <button id="btnStreets" class="btn btn-default">Streets</button>
+            <button id="btnSatellite" class="btn btn-default">Satellite</button>
+            <button id="btnHybrid" class="btn btn-default">Hybrid</button>
+            <button id="btnTopo" class="btn btn-default">Topo</button>
+          </div>  
+        </div>
+        <div class="btn-toolbar">
+          <div class="btn-group">
+            <button id="btnGray" class="btn btn-default">Gray</button>
+            <button id="btnNatGeo" class="btn btn-default">National Geographic</button>
+          </div>  
+        </div>
+      </div>
+    </div> -->
+
+
+<div class="modal fade" id="waiting_resultsModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Waiting for results</h4>
+                </div>
+                <div class="modal-body">
+                <div id="waiting_results">
+                        <img   src="images/waiting.gif"  alt="Waiting for the results" >
+                        
+                  </div>
+               
+                </div>
+            </div>
+        </div>
+</div>
+
+
+
+
+
+<div class="modal fade" id="ClosestModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="ModalClosest" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Your location</h4>
+                </div>
+                <div class="modal-body">                    
+
+                        <label >Specify coordinates</label>
+                          <div>   <input type = "text" style="width: 140px" value="longitude,latitude" class = "form-control"  id = "ign_point_input_closest" placeholder = "Ignition Point">
+                            <a  id="current_ignpoint_closest_id">In current location</a> &nbsp;/&nbsp;<a  id="map_ignpoint_closest_id">Click on the map</a> 
+                          </div>
+                          <button id="GP_Closesest_Dex_btn" type="submit" class="btn btn-default" data-dismiss="modal">Find Closest Route</button>
+                </div>
+             </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+  </div>
+
+
+
+<div class="modal fade" id="showMTTOutputsModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">MTT Outputs</h4>
+                </div>
+                <div class="modal-body">
+                    
+              </div>
+            </div>
+        </div>
+</div>
+
+
+
+<div class="modal fade" id="showArchiveMTTModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="showArchiveMTTModalClose" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">Archive Simulation</h4>
+                </div>
+                <div class="modal-body">
+                  <label >Select simulation from the archive</label>
+                  <div id="ArchiveMTTResults">
+                        
+                                                    <select class = "form-control" id="ArchiveMTTResults_id">
+                                                       
+                                                      
+                                                    </select>
+                  </div>
+
+
+                      <label >Ignition point</label>
+                          <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ign_point_input_archive" placeholder = "Ignition Point" readonly>
+                          </div>
+                    <hr>
+
+
+                        <label >Fuel Moisture</label>
+                            <select class = "form-control" id="fuel_cat_id_archive" readonly>
+                              <option value="0">Fuel moisture from the closest RAWS</option>
+                              <option value="1">D1L1 - Very low dead, fully cured herb (3,4,5,30,60)</option>
+                              <option value="2">D1L2 - Very low dead, 2/3 cured herb (3,4,5,60,90)</option>
+                              <option value="3">D1L3 - Very low dead, 1/3 cured herb (3,4,5,90,120)</option>
+                              <option value="4">D1L4 - Very low dead, fully green herb (3,4,5,120,150)</option>
+                              <option value="5">D2L1 - Low dead, fully cured herb (6,7,8,30,60)</option>
+                              <option value="6">D2L2 - Low dead, 2/3 cured herb (6,7,8,60,90)</option>
+                              <option value="7">D2L3 - Low dead, 1/3 cured herb (6,7,8,90,120)</option>
+                              <option value="8">D2L4 - Low dead, fully green herb (6,7,8,120,150)</option>
+                              <option value="9">D3L1 - Moderate dead, fully cured herb (9,10,11,30,60)</option>
+                              <option value="10">D3L2 - Moderate dead, 2/3 cured herb (9,10,11,60,90)</option>
+                              <option value="11">D3L3 - Moderate dead, 1/3 cured herb (9,10,11,90,120)</option>
+                              <option value="12">D3L4 - Moderate dead, fully green herb (9,10,11,120,150)</option>
+                              <option value="13">D4L1 - High dead, fully cured herb (12,13,14,30,60)</option>
+                              <option value="14">D4L2 - High dead, 2/3 cured herb (12,13,14,60,90)</option>
+                               <option>D4L3 - High dead, 1/3 cured herb (12,13,14,90,120)</option>
+                               <option>D4L4 - High dead, fully green herb (12,13,14,120,150)</option>
+
+                            </select>
+                        <label >Simulation time (hours)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_archive" placeholder = "simulation time (hours)" readonly>
+                 </div>
+                    <hr>
+
+<label >Simulation time (minutes)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_min_archive" placeholder = "simulation time (minutes)" readonly></div>
+                    <hr>
+
+
+<label >Wind Speed</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ws_input_archive" placeholder = "Wind speed (m/sec)" readonly>
+                 </div>
+                    <hr>
+
+<label >Wind Direction</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "wd_input_archive" placeholder = "Wind direction (degrees)" readonly>
+                 </div>
+                    
+
+                    <!-- <input type = "text" class = "form-control" id = "wind_direction" placeholder = "Wind Direction">
+                     
+<p><div id="slider" ></div><input type="text" id="sliderValue" data-dojo-type="dijit/form/TextBox" /></p>
+-->
+                    <div class="bigdiv"><img id="compassimg_archive"  src="images/wind_arrow.png"  alt="Wind Direction">
+                    </div>
+                    <hr/>
+
+                  <label >Show Outputs</label>
+                         <div id="combo_results">
+                        
+                                                    <select class = "form-control" id="mtt_archive_results_id">
+                                                       <option value="0">Select Map</option>
+                                                      <option value="1">Arrival Time</option>
+                                                      <option value="2">Fire Line Intensity</option>
+                                                      <option value="3">Rate of Spread</option>
+                                                      
+                                                    </select>
+                          </div>
+                 <div><a  id="ShowMajorPaths">Show</a> / <a  id="HideMajorPaths">Hide</a>Major Paths</div>
+               
+
+
+                  
+
+                  <div> <a  id="ShowFlowPaths">Show</a> / <a  id="HideFlowPaths">Hide</a>Flow Paths</div>
+                  <hr/>
+                  <label >Download Outputs</label>
+                  <div>
+                    <a  id="downloadResults_id"><img   src="images/download_zip.png"  width="100" alt="Download Results" ></img></a>
+                  </div>
+                  <hr/>
+                  <button id="ArhiveMTTbtnHide" type="submit" class="btn btn-default" data-dismiss="modal">Show Map</button>
+                  <button type="button" id="showArchiveMTTModalClose2"  class="btn btn-default" data-dismiss="modal" aria-hidden="true">Clear Results</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+</div>
+
+
+ <div class="modal fade" id="geosearchModal" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" id="geosearchModalClose" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                  <h4 class="modal-title">New Fire Behavior Simulation</h4>
+                </div>
+                <div class="modal-body">
+                    
+
+
+                  <form id="geosearch-form">
+                    <div class="form-group">
+                      <div id="geosearch"></div>
+
+
+                        <label >Ignition point</label>
+                          <div>   <input type = "text" style="width: 140px" value="longitude,latitude" class = "form-control"  id = "ign_point_input" placeholder = "Ignition Point">
+                            <a  id="current_ignpoint_id">Coordinates retrieved from GPS</a> &nbsp;/&nbsp;<a  id="map_ignpoint_id">Click on the map to specify coordinates</a> 
+                          </div>
+                    <hr>
+
+
+                        <label >Fuel Moisture</label>
+                            <select class = "form-control" id="fuel_cat_id">
+                              <option value="0">Fuel moisture from the closest RAWS</option>
+                              <option value="1">D1L1 - Very low dead, fully cured herb (3,4,5,30,60)</option>
+                              <option value="2">D1L2 - Very low dead, 2/3 cured herb (3,4,5,60,90)</option>
+                              <option value="3">D1L3 - Very low dead, 1/3 cured herb (3,4,5,90,120)</option>
+                              <option value="4">D1L4 - Very low dead, fully green herb (3,4,5,120,150)</option>
+                              <option value="5">D2L1 - Low dead, fully cured herb (6,7,8,30,60)</option>
+                              <option value="6">D2L2 - Low dead, 2/3 cured herb (6,7,8,60,90)</option>
+                              <option value="7">D2L3 - Low dead, 1/3 cured herb (6,7,8,90,120)</option>
+                              <option value="8">D2L4 - Low dead, fully green herb (6,7,8,120,150)</option>
+                              <option value="9">D3L1 - Moderate dead, fully cured herb (9,10,11,30,60)</option>
+                              <option value="10">D3L2 - Moderate dead, 2/3 cured herb (9,10,11,60,90)</option>
+                              <option value="11">D3L3 - Moderate dead, 1/3 cured herb (9,10,11,90,120)</option>
+                              <option value="12">D3L4 - Moderate dead, fully green herb (9,10,11,120,150)</option>
+                              <option value="13">D4L1 - High dead, fully cured herb (12,13,14,30,60)</option>
+                              <option value="14">D4L2 - High dead, 2/3 cured herb (12,13,14,60,90)</option>
+                             <option>D4L3 - High dead, 1/3 cured herb (12,13,14,90,120)</option>
+                             <option>D4L4 - High dead, fully green herb (12,13,14,120,150)</option>
+
+                            </select>
+                        <label >Simulation time (hours)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time" placeholder = "Specify simulation time (hours)"><a  id="increase_sim_id"><img   src="images/plus.png" width="45" height="45" alt="Increase (hours)" ></a> &nbsp;&nbsp;<a  id="decrease_sim_id"><img   src="images/minus.png"  width="45" height="45" alt="Decrease (hours)" ></a></div>
+                    <hr>
+
+<label >Simulation time (minutes)</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "sim_time_min" placeholder = "Specify simulation time (minutes)"><a  id="increase_sim_id_min"><img   src="images/plus.png" width="45" height="45" alt="Increase (minutes)" ></a> &nbsp;&nbsp;<a  id="decrease_sim_id_min"><img  src="images/minus.png"  width="45" height="45" alt="Decrease (minutes)" ></a></div>
+                    <hr>
+
+
+<label >Wind Speed</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "ws_input" placeholder = "Specify wind speed (m/sec)"><a  id="increase_ws"><img   src="images/plus.png" width="45" height="45" alt="Increase wind speed" ></a> &nbsp;&nbsp;<a  id="decrease_ws"><img  src="images/minus.png"  width="45" height="45" alt="Decrease wind speed"></a>&nbsp;&nbsp;<a  id="GetReal_ws_id">Wind Speed from current location</a>
+                 </div>
+                    <hr>
+
+<label >Wind Direction</label>
+                 <div>   <input type = "text" style="width: 200px" value="0" class = "form-control"  id = "wd_input" placeholder = "Specify wind direction (degrees)"><a  id="increase_wd"><img   src="images/plus.png" width="45" height="45" alt="Increase wind direction" ></a> &nbsp;&nbsp;<a  id="decrease_wd"><img  src="images/minus.png"  width="45" height="45" alt="Decrease wind direction"></a>&nbsp;&nbsp;<a  id="GetReal_wd_id">Wind Direction from current location</a>
+                 </div>
+                    
+
+                    <!-- <input type = "text" class = "form-control" id = "wind_direction" placeholder = "Wind Direction">
+                     
+<p><div id="slider" ></div><input type="text" id="sliderValue" data-dojo-type="dijit/form/TextBox" /></p>
+-->
+                    <div class="bigdiv"><img id="compassimg"  src="images/wind_arrow.png"  alt="Wind Direction" >
+                    </div>
+
+                  </div> 
+                    <button id="StartMTTbtn" type="button" class="btn btn-success" data-dismiss="modal"> Start Simulation </button>
+                    <hr/>
+                    <div id="showMTTResults">
+                       <label >Show Outputs</label>
+                         <div id="combo_results">
+                        
+                                                    <select class = "form-control" id="mtt_results_id">
+                                                       <option value="0">Select Map</option>
+                                                      <option value="1">Arrival Time</option>
+                                                      <option value="2">Fire Line Intensity</option>
+                                                      <option value="3">Rate of Spread</option>
+                                                      
+                                                    </select>
+                          </div>
+                 <div><a  id="ShowMajorPathsNew">Show</a> / <a  id="HideMajorPathsNew">Hide</a>Major Paths</div>
+               
+
+
+                  
+
+                  <div> <a  id="ShowFlowPathsNew">Show</a> / <a  id="HideFlowPathsNew">Hide</a>Flow Paths</div>
+                  </div>
+
+                    <div class="checkbox">
+    
+  </div>
+
+                    <button id="StartMTTbtnHide" type="submit" class="btn btn-default" data-dismiss="modal">Show Map</button>
+                    <button type="button" id="StartMTTbtnHide2"  class="btn btn-default" data-dismiss="modal" aria-hidden="true">Clear Results</button>
+                  </form>
+                  
+
+
+                 
+               
+
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+     
+    <div id="mapDiv">
+
+    </div>
+        
+          
+   <div id="legendDiv">
+    
+  </div>
+
+  <div id="measurementDiv"></div>
+            
+          </div>
+
+
+<script type="text/javascript" src="Datejs-all/test/scripts/firebug/firebug.js"></script>
+    
+    <script type='text/javascript' src='Datejs-all/test/scripts/jquery-1.2.1.pack.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/cruiser.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/enumerable.js'></script>
+    <script type='text/javascript' src='Datejs-all/test/scripts/specifications.js'></script>
+   
+    
+    <!-- Datejs -->    
+    <script type='text/javascript' src='Datejs-all/src/globalization/en-US.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/core-debug.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/sugarpak-debug.js'></script>
+    <script type='text/javascript' src='Datejs-all/src/parser-debug.js'></script>
+
+
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="js/jQueryRotate.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>
